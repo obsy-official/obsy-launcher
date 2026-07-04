@@ -21,7 +21,7 @@ export const VersionSelector = () => {
       <Label>{t("version.selectVersion")}</Label>
       <Select
         value={state.selectedVersionId ?? undefined}
-        onValueChange={selectVersion}
+        onValueChange={(val) => { if (val) selectVersion(val); }}
       >
         <SelectTrigger className="w-full">
           <SelectValue placeholder={t("version.selectVersion")}>

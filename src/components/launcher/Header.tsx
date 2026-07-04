@@ -14,8 +14,8 @@ export const Header = () => {
   const { state, updateState } = useLauncherStore();
   const { t } = useTranslation();
 
-  const handleLanguageChange = (val: string) => {
-    if (state) {
+  const handleLanguageChange = (val: string | null) => {
+    if (val && state) {
       updateState({ ...state, language: val as Language });
     }
   };
