@@ -1,0 +1,270 @@
+use std::path::{Path, PathBuf};
+use tauri::{AppHandle, Emitter};
+use std::fs;
+use std::io::{Read, Write};
+
+pub fn get_required_java_version(mc_version: &str) -> u32 {
+    let mc_dir = crate::minecraft::versions::get_minecraft_dir();
+    let json_path = mc_dir.join("versions").join(mc_version).join(format!("{}.json", mc_version));
+    
+    if let Ok(content) = std::fs::read_to_string(&json_path) {
+        if let Ok(json) = serde_json::from_str::<serde_json::Value>(&content) {
+            if let Some(java_version) = json.get("javaVersion") {
+                if let Some(major) = java_version.get("majorVersion") {
+                    if let Some(major_u32) = major.as_u64() {
+                        return major_u32 as u32;
+                    }
+                }
+            }
+        }
+    }
+
+    let mut target_version = mc_version;
+    
+    if let Some(idx) = mc_version.rfind("1.") {
+        target_version = &mc_version[idx..];
+    }
+
+    let parts: Vec<&str> = target_version.split('.').collect();
+    if parts.len() >= 2 {
+        let minor_str = parts[1].chars().take_while(|c| c.is_ascii_digit()).collect::<String>();
+        if let Ok(minor) = minor_str.parse::<u32>() {
+            if minor >= 20 {
+                if minor == 20 && parts.len() >= 3 {
+                    let patch_str = parts[2].chars().take_while(|c| c.is_ascii_digit()).collect::<String>();
+                    if let Ok(patch) = patch_str.parse::<u32>() {
+                        if patch >= 5 {
+                            return 21;
+                        }
+                    }
+                    return 17;
+                }
+                if minor > 20 {
+                    return 21;
+                }
+            } else if minor >= 17 {
+                return 17;
+            }
+        }
+    }
+    8
+}
+
+pub async fn download_java_if_needed(mc_version: &str, app: &AppHandle) -> Result<String, String> {
+    let version = get_required_java_version(mc_version);
+    let mc_dir = super::versions::get_minecraft_dir();
+    let jre_dir = mc_dir.join("jre").join(version.to_string());
+
+    let java_executable = if cfg!(target_os = "windows") {
+        "java.exe"
+    } else {
+        "java"
+    };
+
+    let find_extracted_java = |dir: &Path| -> Option<PathBuf> {
+        let mut paths_to_check = vec![dir.to_path_buf()];
+        while let Some(current) = paths_to_check.pop() {
+            if let Ok(entries) = fs::read_dir(&current) {
+                for entry in entries.flatten() {
+                    let path = entry.path();
+                    if path.is_dir() {
+                        paths_to_check.push(path);
+                    } else if path.is_file() && path.file_name().unwrap_or_default() == java_executable {
+                        return Some(path);
+                    }
+                }
+            }
+        }
+        None
+    };
+
+    if jre_dir.exists() {
+        if let Some(path) = find_extracted_java(&jre_dir) {
+            return Ok(path.to_string_lossy().to_string());
+        }
+    }
+
+    if let Some(sys_java) = find_system_java() {
+        return Ok(sys_java);
+    }
+
+    #[derive(Clone, serde::Serialize)]
+    struct LaunchProgressPayload {
+        status: String,
+        progress: f32,
+    }
+
+    let _ = app.emit("launch-progress", LaunchProgressPayload {
+        status: "downloading_java".to_string(),
+        progress: 0.1,
+    });
+
+    let os = if cfg!(target_os = "macos") {
+        "mac"
+    } else if cfg!(target_os = "windows") {
+        "windows"
+    } else {
+        "linux"
+    };
+
+    let mut arch = if cfg!(target_arch = "aarch64") {
+        "aarch64"
+    } else {
+        "x64"
+    };
+
+    if os == "mac" && arch == "aarch64" && version == 8 {
+        arch = "x64";
+    }
+
+    let url = format!("https://api.adoptium.net/v3/binary/latest/{}/ga/{}/{}/jre/hotspot/normal/eclipse", version, os, arch);
+
+    fs::create_dir_all(&jre_dir).map_err(|e| e.to_string())?;
+
+    let response = match reqwest::get(&url).await {
+        Ok(r) => r,
+        Err(e) => {
+            eprintln!("reqwest::get failed: {}", e);
+            return Err(e.to_string());
+        }
+    };
+    
+    if !response.status().is_success() {
+        let status = response.status();
+        eprintln!("HTTP Error: {}", status);
+        return Err(format!("HTTP Error: {}", status));
+    }
+    
+    let bytes = match response.bytes().await {
+        Ok(b) => b,
+        Err(e) => {
+            eprintln!("Failed to read bytes: {}", e);
+            return Err(e.to_string());
+        }
+    };
+
+    let _ = app.emit("launch-progress", LaunchProgressPayload {
+        status: "extracting_java".to_string(),
+        progress: 0.5,
+    });
+
+    if os == "windows" {
+        let reader = std::io::Cursor::new(bytes);
+        let mut archive = match zip::ZipArchive::new(reader) {
+            Ok(a) => a,
+            Err(e) => {
+                eprintln!("ZipArchive::new failed: {}", e);
+                return Err(e.to_string());
+            }
+        };
+        if let Err(e) = archive.extract(&jre_dir) {
+            eprintln!("Zip extraction failed: {}", e);
+            return Err(e.to_string());
+        }
+    } else {
+        let tar = flate2::read::GzDecoder::new(std::io::Cursor::new(bytes));
+        let mut archive = tar::Archive::new(tar);
+        if let Err(e) = archive.unpack(&jre_dir) {
+            eprintln!("Tar extraction failed: {}", e);
+            return Err(e.to_string());
+        }
+        
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            if let Some(java_path) = find_extracted_java(&jre_dir) {
+                if let Ok(metadata) = fs::metadata(&java_path) {
+                    let mut perms = metadata.permissions();
+                    perms.set_mode(0o755);
+                    let _ = fs::set_permissions(&java_path, perms);
+                }
+            }
+        }
+    }
+
+    if let Some(path) = find_extracted_java(&jre_dir) {
+        Ok(path.to_string_lossy().to_string())
+    } else {
+        Err("Failed to find java executable after extraction".to_string())
+    }
+}
+
+fn find_system_java() -> Option<String> {
+    if let Ok(java_home) = std::env::var("JAVA_HOME") {
+        let path = std::path::Path::new(&java_home).join("bin").join(if cfg!(target_os = "windows") { "java.exe" } else { "java" });
+        if path.exists() {
+            return Some(path.to_string_lossy().to_string());
+        }
+    }
+    
+    #[cfg(target_os = "macos")]
+    {
+        if let Ok(entries) = std::fs::read_dir("/Library/Java/JavaVirtualMachines") {
+            for entry in entries.flatten() {
+                let java_path = entry.path().join("Contents").join("Home").join("bin").join("java");
+                if java_path.exists() {
+                    return Some(java_path.to_string_lossy().to_string());
+                }
+            }
+        }
+        
+        let brew_java = "/opt/homebrew/opt/openjdk/bin/java";
+        if std::path::Path::new(brew_java).exists() {
+            return Some(brew_java.to_string());
+        }
+
+        if let Some(home) = dirs::home_dir() {
+            let sdkman_java = home.join(".sdkman").join("candidates").join("java").join("current").join("bin").join("java");
+            if sdkman_java.exists() {
+                return Some(sdkman_java.to_string_lossy().to_string());
+            }
+        }
+    }
+    
+    #[cfg(target_os = "windows")]
+    {
+        let program_files = std::env::var("ProgramFiles").unwrap_or_else(|_| "C:\\Program Files".to_string());
+        let java_dir = std::path::Path::new(&program_files).join("Java");
+        if let Ok(entries) = std::fs::read_dir(java_dir) {
+            for entry in entries.flatten() {
+                let java_path = entry.path().join("bin").join("java.exe");
+                if java_path.exists() {
+                    return Some(java_path.to_string_lossy().to_string());
+                }
+            }
+        }
+        let program_files_x86 = std::env::var("ProgramFiles(x86)").unwrap_or_else(|_| "C:\\Program Files (x86)".to_string());
+        let java_dir_x86 = std::path::Path::new(&program_files_x86).join("Java");
+        if let Ok(entries) = std::fs::read_dir(java_dir_x86) {
+            for entry in entries.flatten() {
+                let java_path = entry.path().join("bin").join("java.exe");
+                if java_path.exists() {
+                    return Some(java_path.to_string_lossy().to_string());
+                }
+            }
+        }
+    }
+    
+    #[cfg(target_os = "linux")]
+    {
+        if let Ok(entries) = std::fs::read_dir("/usr/lib/jvm") {
+            for entry in entries.flatten() {
+                let java_path = entry.path().join("bin").join("java");
+                if java_path.exists() {
+                    return Some(java_path.to_string_lossy().to_string());
+                }
+            }
+        }
+    }
+
+    if let Ok(output) = std::process::Command::new(if cfg!(target_os = "windows") { "java.exe" } else { "java" })
+        .arg("-version")
+        .output()
+    {
+        if output.status.success() {
+            return Some("java".to_string());
+        }
+    }
+
+    None
+}

@@ -1,0 +1,57 @@
+{
+  "translation": {
+    "app": {
+      "title": "Obsy Launcher"
+    },
+    "profile": {
+      "selectProfile": "Select profile",
+      "selectAccount": "Select account",
+      "noProfiles": "No profiles added",
+      "microsoft": "License",
+      "offline": "Offline",
+      "addOfflineProfile": "Add offline profile",
+      "addMicrosoftProfile": "Add Microsoft Account",
+      "microsoftLoginInstructions": "Follow the instructions below to log in:",
+      "microsoftLoginCode": "Code:",
+      "microsoftLoginLink": "Open login page",
+      "microsoftLoginWaiting": "Waiting for authentication...",
+      "microsoftLoginError": "Authentication failed",
+      "username": "Username",
+      "enterNickname": "Enter your nickname",
+      "cancel": "Cancel",
+      "add": "Add",
+      "deleteTooltip": "Delete profile"
+    },
+    "version": {
+      "selectVersion": "Select version",
+      "noVersions": "No versions available"
+    },
+    "launch": {
+      "play": "Play",
+      "starting": "Preparing...",
+      "downloading_java": "Downloading Java...",
+      "extracting_java": "Extracting Java...",
+      "downloading_libs": "Downloading libraries...",
+      "downloading_assets": "Downloading assets...",
+      "checking_natives": "Checking natives...",
+      "launching": "Starting Minecraft...",
+      "success": "Success!"
+    },
+    "settings": {
+      "title": "Settings",
+      "game": "Game",
+      "window": "Window",
+      "versions": "Versions",
+      "memory": "Memory allocation (MB)",
+      "autoMemory": "Automatically detect memory",
+      "jvmArgs": "JVM Arguments",
+      "closeAfterLaunch": "Close launcher after start",
+      "width": "Width",
+      "height": "Height",
+      "fullscreen": "Fullscreen mode",
+      "showReleases": "Show releases",
+      "showSnapshots": "Show snapshots",
+      "showOld": "Show old (Alpha/Beta)"
+    }
+  }
+}

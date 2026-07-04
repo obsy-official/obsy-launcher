@@ -1,0 +1,57 @@
+{
+  "translation": {
+    "app": {
+      "title": "Obsy Launcher"
+    },
+    "profile": {
+      "selectProfile": "Выберите профиль",
+      "selectAccount": "Выберите аккаунт",
+      "noProfiles": "Профили не добавлены",
+      "microsoft": "Лицензия",
+      "offline": "Офлайн",
+      "addOfflineProfile": "Добавить офлайн профиль",
+      "addMicrosoftProfile": "Войти через Microsoft",
+      "microsoftLoginInstructions": "Следуйте инструкциям ниже для входа:",
+      "microsoftLoginCode": "Код:",
+      "microsoftLoginLink": "Открыть страницу входа",
+      "microsoftLoginWaiting": "Ожидание авторизации...",
+      "microsoftLoginError": "Ошибка авторизации",
+      "username": "Имя пользователя",
+      "enterNickname": "Введите ваш никнейм",
+      "cancel": "Отмена",
+      "add": "Добавить",
+      "deleteTooltip": "Удалить профиль"
+    },
+    "version": {
+      "selectVersion": "Выберите версию",
+      "noVersions": "Нет доступных версий"
+    },
+    "launch": {
+      "play": "Играть",
+      "starting": "Подготовка...",
+      "downloading_java": "Загрузка Java...",
+      "extracting_java": "Распаковка Java...",
+      "downloading_libs": "Загрузка библиотек...",
+      "downloading_assets": "Загрузка ресурсов...",
+      "checking_natives": "Проверка библиотек...",
+      "launching": "Запуск Minecraft...",
+      "success": "Успешно!"
+    },
+    "settings": {
+      "title": "Настройки",
+      "game": "Игра",
+      "window": "Окно",
+      "versions": "Версии",
+      "memory": "Выделение памяти (MB)",
+      "autoMemory": "Автоматически определять память",
+      "jvmArgs": "Аргументы JVM",
+      "closeAfterLaunch": "Закрывать лаунчер после запуска",
+      "width": "Ширина",
+      "height": "Высота",
+      "fullscreen": "Полноэкранный режим",
+      "showReleases": "Показывать релизы",
+      "showSnapshots": "Показывать снапшоты",
+      "showOld": "Показывать старые (Alpha/Beta)"
+    }
+  }
+}
