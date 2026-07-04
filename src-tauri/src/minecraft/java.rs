@@ -1,7 +1,6 @@
 use std::path::{Path, PathBuf};
 use tauri::{AppHandle, Emitter};
 use std::fs;
-use std::io::{Read, Write};
 
 pub fn get_required_java_version(mc_version: &str) -> u32 {
     let mc_dir = crate::minecraft::versions::get_minecraft_dir();

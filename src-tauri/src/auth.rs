@@ -7,6 +7,8 @@ use keyring::Entry;
 use magic_crypt::{new_magic_crypt, MagicCryptTrait};
 
 fn get_encryption_key(store_path: &PathBuf) -> String {
+    // Prefer OS-native keychain (Keychain Access on macOS, Credential Manager on Windows) 
+    // to prevent local malware from easily extracting Microsoft session tokens.
     if let Ok(entry) = Entry::new("obsy-launcher", "profile-encryption-key") {
         if let Ok(password) = entry.get_password() {
             return password;
@@ -17,6 +19,8 @@ fn get_encryption_key(store_path: &PathBuf) -> String {
         }
     }
     
+    // OS Keyring might be unavailable in unsigned dev builds (macOS errSecAuthFailed) or headless setups.
+    // Fall back to a local key file to ensure the launcher still boots without panicking.
     let key_path = store_path.with_file_name("profiles.key");
     if key_path.exists() {
         if let Ok(key) = fs::read_to_string(&key_path) {
@@ -81,14 +85,7 @@ impl ProfileStore {
     pub fn load(&self) -> Vec<Profile> {
         if self.path.exists() {
             if let Ok(contents) = fs::read_to_string(&self.path) {
-                // First try to parse as plaintext (migration path)
-                if let Ok(profiles) = serde_json::from_str::<Vec<Profile>>(&contents) {
-                    // It was plaintext! Let's re-save it encrypted in the background.
-                    let _ = self.save(&profiles);
-                    return profiles;
-                }
-                
-                // If it's not plaintext, try to decrypt it
+
                 let key = get_encryption_key(&self.path);
                 let mc = new_magic_crypt!(key, 256);
                 
