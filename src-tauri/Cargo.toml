@@ -23,7 +23,8 @@ tauri-plugin-opener = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 uuid = { version = "1.11", features = ["v3", "v4"] }
-reqwest = { version = "0.13.4", features = ["json"] }
+reqwest = { version = "0.13.4", features = ["json", "multipart"] }
+base64 = "0.22.1"
 tokio = { version = "1.52.3", features = ["full"] }
 dirs = "6.0.0"
 open_launcher = "1.5.5"

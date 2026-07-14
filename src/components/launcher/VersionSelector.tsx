@@ -21,7 +21,9 @@ export const VersionSelector = () => {
       <Label>{t("version.selectVersion")}</Label>
       <Select
         value={state.selectedVersionId ?? undefined}
-        onValueChange={(val) => { if (val) selectVersion(val); }}
+        onValueChange={(val) => {
+          if (val) selectVersion(val);
+        }}
       >
         <SelectTrigger className="w-full">
           <SelectValue placeholder={t("version.selectVersion")}>
@@ -32,13 +34,13 @@ export const VersionSelector = () => {
               return (
                 <div className="flex items-center gap-2">
                   {v.isLocal ? (
-                    <HardDrive className="w-4 h-4 text-muted-foreground" />
+                    <HardDrive className="text-muted-foreground h-4 w-4" />
                   ) : (
-                    <Cloud className="w-4 h-4 text-muted-foreground" />
+                    <Cloud className="text-muted-foreground h-4 w-4" />
                   )}
                   <span>
                     {v.id}{" "}
-                    <span className="text-muted-foreground text-xs ml-1 capitalize">
+                    <span className="text-muted-foreground ml-1 text-xs capitalize">
                       ({v.type})
                     </span>
                   </span>
@@ -57,13 +59,13 @@ export const VersionSelector = () => {
               <SelectItem key={v.id} value={v.id}>
                 <div className="flex items-center gap-2">
                   {v.isLocal ? (
-                    <HardDrive className="w-4 h-4 text-muted-foreground" />
+                    <HardDrive className="text-muted-foreground h-4 w-4" />
                   ) : (
-                    <Cloud className="w-4 h-4 text-muted-foreground" />
+                    <Cloud className="text-muted-foreground h-4 w-4" />
                   )}
                   <span>
                     {v.id}{" "}
-                    <span className="text-muted-foreground text-xs ml-1 capitalize">
+                    <span className="text-muted-foreground ml-1 text-xs capitalize">
                       ({v.type})
                     </span>
                   </span>

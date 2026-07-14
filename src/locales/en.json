@@ -52,6 +52,13 @@
       "showReleases": "Show releases",
       "showSnapshots": "Show snapshots",
       "showOld": "Show old (Alpha/Beta)"
+    },
+    "wardrobe": {
+      "title": "Skin Wardrobe",
+      "changeSkin": "Change Skin",
+      "uploadSkin": "Upload Skin",
+      "applySkin": "Apply Skin",
+      "emptyPreview": "Select a skin from your wardrobe to preview and apply it."
     }
   }
 }

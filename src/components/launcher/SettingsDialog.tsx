@@ -32,7 +32,7 @@ export const SettingsDialog = () => {
           />
         }
       >
-        <Settings className="w-5 h-5" />
+        <Settings className="h-5 w-5" />
       </DialogTrigger>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
@@ -62,7 +62,7 @@ export const SettingsDialog = () => {
             <div className="flex flex-col gap-2">
               <div className="flex justify-between">
                 <Label>{t("settings.memory")}</Label>
-                <span className="text-sm text-muted-foreground">
+                <span className="text-muted-foreground text-sm">
                   {state.memoryAmount} MB
                 </span>
               </div>

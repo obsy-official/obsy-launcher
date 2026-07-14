@@ -1,0 +1,7 @@
+node_modules
+dist
+src-tauri
+.gitignore
+package.json
+bun.lockb
+bun.lock

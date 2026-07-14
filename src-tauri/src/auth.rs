@@ -1,13 +1,13 @@
+use keyring::Entry;
+use magic_crypt::{new_magic_crypt, MagicCryptTrait};
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
 use tauri::Manager;
 use uuid::Uuid;
-use keyring::Entry;
-use magic_crypt::{new_magic_crypt, MagicCryptTrait};
 
 fn get_encryption_key(store_path: &PathBuf) -> String {
-    // Prefer OS-native keychain (Keychain Access on macOS, Credential Manager on Windows) 
+    // Prefer OS-native keychain (Keychain Access on macOS, Credential Manager on Windows)
     // to prevent local malware from easily extracting Microsoft session tokens.
     if let Ok(entry) = Entry::new("obsy-launcher", "profile-encryption-key") {
         if let Ok(password) = entry.get_password() {
@@ -18,7 +18,7 @@ fn get_encryption_key(store_path: &PathBuf) -> String {
             return key;
         }
     }
-    
+
     // OS Keyring might be unavailable in unsigned dev builds (macOS errSecAuthFailed) or headless setups.
     // Fall back to a local key file to ensure the launcher still boots without panicking.
     let key_path = store_path.with_file_name("profiles.key");
@@ -27,7 +27,7 @@ fn get_encryption_key(store_path: &PathBuf) -> String {
             return key;
         }
     }
-    
+
     let key = Uuid::new_v4().to_string() + &Uuid::new_v4().to_string();
     let _ = fs::write(&key_path, &key);
     key
@@ -57,12 +57,17 @@ pub struct Profile {
 
 impl Profile {
     pub fn new_offline(username: String) -> Self {
-        let id = Uuid::new_v3(&Uuid::NAMESPACE_OID, format!("OfflinePlayer:{}", username).as_bytes()).to_string();
+        let id = Uuid::new_v3(
+            &Uuid::NAMESPACE_OID,
+            format!("OfflinePlayer:{}", username).as_bytes(),
+        )
+        .to_string();
+        let skin_png = Some(format!("https://minotar.net/skin/{}", username));
         Self {
             id,
             username,
             microsoft: false,
-            skin_png: None,
+            skin_png,
             slim: false,
             capes: vec![],
             access_token: None,
@@ -85,10 +90,9 @@ impl ProfileStore {
     pub fn load(&self) -> Vec<Profile> {
         if self.path.exists() {
             if let Ok(contents) = fs::read_to_string(&self.path) {
-
                 let key = get_encryption_key(&self.path);
                 let mc = new_magic_crypt!(key, 256);
-                
+
                 if let Ok(decrypted) = mc.decrypt_base64_to_string(&contents) {
                     if let Ok(profiles) = serde_json::from_str(&decrypted) {
                         return profiles;
@@ -104,11 +108,11 @@ impl ProfileStore {
             let _ = fs::create_dir_all(parent);
         }
         let json_contents = serde_json::to_string_pretty(profiles).map_err(|e| e.to_string())?;
-        
+
         let key = get_encryption_key(&self.path);
         let mc = new_magic_crypt!(key, 256);
         let encrypted = mc.encrypt_str_to_base64(json_contents);
-        
+
         fs::write(&self.path, encrypted).map_err(|e| e.to_string())?;
         Ok(())
     }

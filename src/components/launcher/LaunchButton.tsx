@@ -53,17 +53,17 @@ export const LaunchButton = () => {
   if (!state) return null;
 
   return (
-    <div className="pt-4 flex flex-col gap-3">
+    <div className="mt-auto flex flex-col gap-3 pt-4">
       <Button
         size="lg"
-        className="w-full text-lg font-bold h-14 uppercase"
+        className="h-14 w-full text-lg font-bold uppercase"
         disabled={
           !state.selectedProfileId || !state.selectedVersionId || isLaunching
         }
         onClick={handleLaunch}
       >
         {isLaunching ? (
-          <div className="flex flex-col items-center gap-1 w-full">
+          <div className="flex w-full flex-col items-center gap-1">
             <span className="text-sm font-normal">
               {t(`launch.${launchStatus}`)} {Math.round(launchProgress)}%
             </span>
@@ -71,7 +71,7 @@ export const LaunchButton = () => {
           </div>
         ) : (
           <>
-            <Play className="w-5 h-5 mr-2 fill-current" />
+            <Play className="mr-2 h-5 w-5 fill-current" />
             {t("launch.play")}
           </>
         )}

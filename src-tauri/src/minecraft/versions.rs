@@ -5,17 +5,19 @@ pub async fn get_mojang_versions() -> Result<Vec<MinecraftVersion>, String> {
     let response = reqwest::get("https://piston-meta.mojang.com/mc/game/version_manifest_v2.json")
         .await
         .map_err(|e| e.to_string())?;
-        
-    let manifest: MojangManifest = response.json()
-        .await
-        .map_err(|e| e.to_string())?;
 
-    let versions = manifest.versions.into_iter().map(|v| MinecraftVersion {
-        id: v.id,
-        r#type: v.r#type,
-        is_local: false,
-        release_time: Some(v.release_time),
-    }).collect();
+    let manifest: MojangManifest = response.json().await.map_err(|e| e.to_string())?;
+
+    let versions = manifest
+        .versions
+        .into_iter()
+        .map(|v| MinecraftVersion {
+            id: v.id,
+            r#type: v.r#type,
+            is_local: false,
+            release_time: Some(v.release_time),
+        })
+        .collect();
 
     Ok(versions)
 }

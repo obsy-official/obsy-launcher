@@ -23,11 +23,11 @@ export const Header = () => {
   return (
     <header
       data-tauri-drag-region
-      className="w-full flex items-center justify-between p-4 border-b border-border/50 bg-card/50 backdrop-blur-md select-none cursor-default"
+      className="border-border/50 bg-card/50 flex w-full cursor-default items-center justify-between border-b p-4 backdrop-blur-md select-none"
     >
       <h1
         data-tauri-drag-region
-        className="text-xl font-bold tracking-tight text-primary pointer-events-none"
+        className="text-primary pointer-events-none text-xl font-bold tracking-tight"
       >
         {t("app.title")}
       </h1>
@@ -40,7 +40,7 @@ export const Header = () => {
               <SelectValue>
                 {(val: any) => (
                   <div className="flex items-center gap-2">
-                    <Globe className="w-4 h-4 text-muted-foreground shrink-0" />
+                    <Globe className="text-muted-foreground h-4 w-4 shrink-0" />
                     <span>{val === "RUSSIAN" ? "Русский" : "English"}</span>
                   </div>
                 )}

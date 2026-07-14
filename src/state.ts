@@ -39,10 +39,19 @@ export interface Profile {
   slim: boolean;
 }
 
+export interface WardrobeSkin {
+  id: string;
+  name: string;
+  base64Data: string;
+  slim: boolean;
+  profileId: string | null;
+}
+
 interface LauncherStore {
   state: LauncherState | null;
   profiles: Profile[];
   versions: MinecraftVersion[];
+  wardrobe: WardrobeSkin[];
   fetchState: () => Promise<void>;
   updateState: (newState: LauncherState) => Promise<void>;
   fetchProfiles: () => Promise<void>;
@@ -51,12 +60,23 @@ interface LauncherStore {
   removeProfile: (id: string) => Promise<void>;
   fetchVersions: () => Promise<void>;
   selectVersion: (id: string) => Promise<void>;
+  fetchWardrobe: () => Promise<void>;
+  refreshProfileSkin: (profileId: string) => Promise<void>;
+  addSkinToWardrobe: (
+    fileBytes: number[],
+    name: string,
+    slim: boolean,
+    profileId: string,
+  ) => Promise<void>;
+  removeSkinFromWardrobe: (id: string) => Promise<void>;
+  applySkin: (profileId: string, skinId: string) => Promise<void>;
 }
 
 export const useLauncherStore = create<LauncherStore>((set, get) => ({
   state: null,
   profiles: [],
   versions: [],
+  wardrobe: [],
   fetchState: async () => {
     try {
       const state = await invoke<LauncherState>("get_launcher_state");
@@ -135,6 +155,58 @@ export const useLauncherStore = create<LauncherStore>((set, get) => ({
       }
     } catch (error) {
       console.error("Failed to select version:", error);
+    }
+  },
+  fetchWardrobe: async () => {
+    try {
+      const wardrobe = await invoke<WardrobeSkin[]>("get_wardrobe");
+      set({ wardrobe });
+    } catch (error) {
+      console.error("Failed to fetch wardrobe:", error);
+    }
+  },
+  refreshProfileSkin: async (profileId: string) => {
+    try {
+      await invoke("refresh_profile_skin", { profileId });
+      await get().fetchProfiles();
+    } catch (error) {
+      console.error("Failed to refresh profile skin:", error);
+    }
+  },
+  addSkinToWardrobe: async (
+    fileBytes: number[],
+    name: string,
+    slim: boolean,
+    profileId: string,
+  ) => {
+    try {
+      await invoke("add_skin_to_wardrobe", {
+        fileBytes,
+        name,
+        slim,
+        profileId,
+      });
+      await get().fetchWardrobe();
+    } catch (error) {
+      console.error("Failed to add skin to wardrobe:", error);
+      throw error;
+    }
+  },
+  removeSkinFromWardrobe: async (id: string) => {
+    try {
+      await invoke("remove_skin_from_wardrobe", { id });
+      await get().fetchWardrobe();
+    } catch (error) {
+      console.error("Failed to remove skin from wardrobe:", error);
+    }
+  },
+  applySkin: async (profileId: string, skinId: string) => {
+    try {
+      await invoke("apply_skin", { profileId, skinId });
+      await get().fetchProfiles(); // Refresh profiles to get the updated skin
+    } catch (error) {
+      console.error("Failed to apply skin:", error);
+      throw error;
     }
   },
 }));

@@ -16,7 +16,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useLauncherStore } from "@/state";
+import { type Profile, useLauncherStore } from "@/state";
 import { invoke } from "@tauri-apps/api/core";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { ExternalLink, Loader2, Plus, Trash2 } from "lucide-react";
@@ -58,12 +58,16 @@ export const ProfileSelector = () => {
       setMsaData(data);
       setIsMsaPolling(true);
 
-      await invoke("poll_msa_auth", {
+      const newProfile = await invoke<Profile>("poll_msa_auth", {
         deviceCode: data.device_code,
         interval: data.interval,
       });
 
       await fetchProfiles();
+      if (newProfile && newProfile.id) {
+        selectProfile(newProfile.id);
+      }
+
       setIsDialogOpen(false);
       setMsaData(null);
     } catch (e: any) {
@@ -94,7 +98,7 @@ export const ProfileSelector = () => {
                     <img
                       src={`https://mc-heads.net/avatar/${p.username}/32`}
                       alt={p.username}
-                      className="w-5 h-5 bg-muted rounded-xs"
+                      className="bg-muted h-5 w-5 rounded-xs"
                     />
                     <span>
                       {p.username}{" "}
@@ -121,7 +125,7 @@ export const ProfileSelector = () => {
                     <img
                       src={`https://mc-heads.net/avatar/${p.username}/32`}
                       alt={p.username}
-                      className="w-5 h-5 bg-muted rounded-xs"
+                      className="bg-muted h-5 w-5 rounded-xs"
                     />
                     <span>
                       {p.username}{" "}
@@ -149,7 +153,7 @@ export const ProfileSelector = () => {
           }}
         >
           <DialogTrigger render={<Button variant="outline" size="icon" />}>
-            <Plus className="w-4 h-4" />
+            <Plus className="h-4 w-4" />
           </DialogTrigger>
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
@@ -196,28 +200,28 @@ export const ProfileSelector = () => {
                 )}
                 {msaData && (
                   <div className="flex flex-col items-center justify-center gap-4 py-4 text-center">
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-muted-foreground text-sm">
                       {t("profile.microsoftLoginInstructions")}
                     </p>
-                    <div className="text-3xl font-bold tracking-widest bg-muted py-2 px-4 rounded-lg select-all">
+                    <div className="bg-muted rounded-lg px-4 py-2 text-3xl font-bold tracking-widest select-all">
                       {msaData.user_code}
                     </div>
                     <Button
                       variant="outline"
-                      className="w-full mt-2"
+                      className="mt-2 w-full"
                       onClick={() => openUrl(msaData.verification_uri)}
                     >
-                      <ExternalLink className="w-4 h-4 mr-2" />
+                      <ExternalLink className="mr-2 h-4 w-4" />
                       {t("profile.microsoftLoginLink")}
                     </Button>
-                    <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground mt-4 animate-pulse">
-                      <Loader2 className="w-4 h-4 animate-spin" />
+                    <div className="text-muted-foreground mt-4 flex animate-pulse items-center justify-center gap-2 text-sm">
+                      <Loader2 className="h-4 w-4 animate-spin" />
                       {t("profile.microsoftLoginWaiting")}
                     </div>
                   </div>
                 )}
                 {msaError && (
-                  <div className="text-destructive text-sm text-center mt-2">
+                  <div className="text-destructive mt-2 text-center text-sm">
                     {t("profile.microsoftLoginError")}: {msaError}
                   </div>
                 )}
@@ -233,7 +237,7 @@ export const ProfileSelector = () => {
             title={t("profile.deleteTooltip")}
             onClick={() => removeProfile(state.selectedProfileId!)}
           >
-            <Trash2 className="w-4 h-4" />
+            <Trash2 className="h-4 w-4" />
           </Button>
         )}
       </div>

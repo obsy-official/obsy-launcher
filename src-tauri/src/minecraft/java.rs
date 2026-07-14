@@ -1,11 +1,14 @@
+use std::fs;
 use std::path::{Path, PathBuf};
 use tauri::{AppHandle, Emitter};
-use std::fs;
 
 pub fn get_required_java_version(mc_version: &str) -> u32 {
     let mc_dir = crate::minecraft::versions::get_minecraft_dir();
-    let json_path = mc_dir.join("versions").join(mc_version).join(format!("{}.json", mc_version));
-    
+    let json_path = mc_dir
+        .join("versions")
+        .join(mc_version)
+        .join(format!("{}.json", mc_version));
+
     if let Ok(content) = std::fs::read_to_string(&json_path) {
         if let Ok(json) = serde_json::from_str::<serde_json::Value>(&content) {
             if let Some(java_version) = json.get("javaVersion") {
@@ -19,18 +22,24 @@ pub fn get_required_java_version(mc_version: &str) -> u32 {
     }
 
     let mut target_version = mc_version;
-    
+
     if let Some(idx) = mc_version.rfind("1.") {
         target_version = &mc_version[idx..];
     }
 
     let parts: Vec<&str> = target_version.split('.').collect();
     if parts.len() >= 2 {
-        let minor_str = parts[1].chars().take_while(|c| c.is_ascii_digit()).collect::<String>();
+        let minor_str = parts[1]
+            .chars()
+            .take_while(|c| c.is_ascii_digit())
+            .collect::<String>();
         if let Ok(minor) = minor_str.parse::<u32>() {
             if minor >= 20 {
                 if minor == 20 && parts.len() >= 3 {
-                    let patch_str = parts[2].chars().take_while(|c| c.is_ascii_digit()).collect::<String>();
+                    let patch_str = parts[2]
+                        .chars()
+                        .take_while(|c| c.is_ascii_digit())
+                        .collect::<String>();
                     if let Ok(patch) = patch_str.parse::<u32>() {
                         if patch >= 5 {
                             return 21;
@@ -68,7 +77,9 @@ pub async fn download_java_if_needed(mc_version: &str, app: &AppHandle) -> Resul
                     let path = entry.path();
                     if path.is_dir() {
                         paths_to_check.push(path);
-                    } else if path.is_file() && path.file_name().unwrap_or_default() == java_executable {
+                    } else if path.is_file()
+                        && path.file_name().unwrap_or_default() == java_executable
+                    {
                         return Some(path);
                     }
                 }
@@ -93,10 +104,13 @@ pub async fn download_java_if_needed(mc_version: &str, app: &AppHandle) -> Resul
         progress: f32,
     }
 
-    let _ = app.emit("launch-progress", LaunchProgressPayload {
-        status: "downloading_java".to_string(),
-        progress: 0.1,
-    });
+    let _ = app.emit(
+        "launch-progress",
+        LaunchProgressPayload {
+            status: "downloading_java".to_string(),
+            progress: 0.1,
+        },
+    );
 
     let os = if cfg!(target_os = "macos") {
         "mac"
@@ -116,7 +130,10 @@ pub async fn download_java_if_needed(mc_version: &str, app: &AppHandle) -> Resul
         arch = "x64";
     }
 
-    let url = format!("https://api.adoptium.net/v3/binary/latest/{}/ga/{}/{}/jre/hotspot/normal/eclipse", version, os, arch);
+    let url = format!(
+        "https://api.adoptium.net/v3/binary/latest/{}/ga/{}/{}/jre/hotspot/normal/eclipse",
+        version, os, arch
+    );
 
     fs::create_dir_all(&jre_dir).map_err(|e| e.to_string())?;
 
@@ -127,13 +144,13 @@ pub async fn download_java_if_needed(mc_version: &str, app: &AppHandle) -> Resul
             return Err(e.to_string());
         }
     };
-    
+
     if !response.status().is_success() {
         let status = response.status();
         eprintln!("HTTP Error: {}", status);
         return Err(format!("HTTP Error: {}", status));
     }
-    
+
     let bytes = match response.bytes().await {
         Ok(b) => b,
         Err(e) => {
@@ -142,10 +159,13 @@ pub async fn download_java_if_needed(mc_version: &str, app: &AppHandle) -> Resul
         }
     };
 
-    let _ = app.emit("launch-progress", LaunchProgressPayload {
-        status: "extracting_java".to_string(),
-        progress: 0.5,
-    });
+    let _ = app.emit(
+        "launch-progress",
+        LaunchProgressPayload {
+            status: "extracting_java".to_string(),
+            progress: 0.5,
+        },
+    );
 
     if os == "windows" {
         let reader = std::io::Cursor::new(bytes);
@@ -167,7 +187,7 @@ pub async fn download_java_if_needed(mc_version: &str, app: &AppHandle) -> Resul
             eprintln!("Tar extraction failed: {}", e);
             return Err(e.to_string());
         }
-        
+
         #[cfg(unix)]
         {
             use std::os::unix::fs::PermissionsExt;
@@ -190,39 +210,58 @@ pub async fn download_java_if_needed(mc_version: &str, app: &AppHandle) -> Resul
 
 fn find_system_java() -> Option<String> {
     if let Ok(java_home) = std::env::var("JAVA_HOME") {
-        let path = std::path::Path::new(&java_home).join("bin").join(if cfg!(target_os = "windows") { "java.exe" } else { "java" });
+        let path =
+            std::path::Path::new(&java_home)
+                .join("bin")
+                .join(if cfg!(target_os = "windows") {
+                    "java.exe"
+                } else {
+                    "java"
+                });
         if path.exists() {
             return Some(path.to_string_lossy().to_string());
         }
     }
-    
+
     #[cfg(target_os = "macos")]
     {
         if let Ok(entries) = std::fs::read_dir("/Library/Java/JavaVirtualMachines") {
             for entry in entries.flatten() {
-                let java_path = entry.path().join("Contents").join("Home").join("bin").join("java");
+                let java_path = entry
+                    .path()
+                    .join("Contents")
+                    .join("Home")
+                    .join("bin")
+                    .join("java");
                 if java_path.exists() {
                     return Some(java_path.to_string_lossy().to_string());
                 }
             }
         }
-        
+
         let brew_java = "/opt/homebrew/opt/openjdk/bin/java";
         if std::path::Path::new(brew_java).exists() {
             return Some(brew_java.to_string());
         }
 
         if let Some(home) = dirs::home_dir() {
-            let sdkman_java = home.join(".sdkman").join("candidates").join("java").join("current").join("bin").join("java");
+            let sdkman_java = home
+                .join(".sdkman")
+                .join("candidates")
+                .join("java")
+                .join("current")
+                .join("bin")
+                .join("java");
             if sdkman_java.exists() {
                 return Some(sdkman_java.to_string_lossy().to_string());
             }
         }
     }
-    
+
     #[cfg(target_os = "windows")]
     {
-        let program_files = std::env::var("ProgramFiles").unwrap_or_else(|_| "C:\\Program Files".to_string());
+        let program_files =
+            std::env::var("ProgramFiles").unwrap_or_else(|_| "C:\\Program Files".to_string());
         let java_dir = std::path::Path::new(&program_files).join("Java");
         if let Ok(entries) = std::fs::read_dir(java_dir) {
             for entry in entries.flatten() {
@@ -232,7 +271,8 @@ fn find_system_java() -> Option<String> {
                 }
             }
         }
-        let program_files_x86 = std::env::var("ProgramFiles(x86)").unwrap_or_else(|_| "C:\\Program Files (x86)".to_string());
+        let program_files_x86 = std::env::var("ProgramFiles(x86)")
+            .unwrap_or_else(|_| "C:\\Program Files (x86)".to_string());
         let java_dir_x86 = std::path::Path::new(&program_files_x86).join("Java");
         if let Ok(entries) = std::fs::read_dir(java_dir_x86) {
             for entry in entries.flatten() {
@@ -243,7 +283,7 @@ fn find_system_java() -> Option<String> {
             }
         }
     }
-    
+
     #[cfg(target_os = "linux")]
     {
         if let Ok(entries) = std::fs::read_dir("/usr/lib/jvm") {
@@ -256,9 +296,13 @@ fn find_system_java() -> Option<String> {
         }
     }
 
-    if let Ok(output) = std::process::Command::new(if cfg!(target_os = "windows") { "java.exe" } else { "java" })
-        .arg("-version")
-        .output()
+    if let Ok(output) = std::process::Command::new(if cfg!(target_os = "windows") {
+        "java.exe"
+    } else {
+        "java"
+    })
+    .arg("-version")
+    .output()
     {
         if output.status.success() {
             return Some("java".to_string());
