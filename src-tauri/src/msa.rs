@@ -21,6 +21,43 @@ pub struct TokenResponse {
     pub refresh_token: String,
 }
 
+pub async fn refresh_msa_token(refresh_token: &str) -> Result<TokenResponse, String> {
+    let client = Client::new();
+    let res = client
+        .post("https://login.live.com/oauth20_token.srf")
+        .header("Content-Type", "application/x-www-form-urlencoded")
+        .body(format!(
+            "client_id={}&grant_type=refresh_token&refresh_token={}",
+            CLIENT_ID, refresh_token
+        ))
+        .send()
+        .await
+        .map_err(|e| e.to_string())?;
+
+    let status = res.status();
+    let body: serde_json::Value = res.json().await.map_err(|e| e.to_string())?;
+
+    if status.is_success() {
+        let access_token = body["access_token"]
+            .as_str()
+            .unwrap_or_default()
+            .to_string();
+        let new_refresh_token = body["refresh_token"]
+            .as_str()
+            .unwrap_or_default()
+            .to_string();
+        return Ok(TokenResponse {
+            access_token,
+            refresh_token: new_refresh_token,
+        });
+    }
+
+    Err(body["error_description"]
+        .as_str()
+        .unwrap_or("Failed to refresh token")
+        .to_string())
+}
+
 pub async fn start_device_code_flow() -> Result<DeviceCodeResponse, String> {
     let client = Client::new();
     let res = client

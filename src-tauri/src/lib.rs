@@ -475,6 +475,37 @@ async fn refresh_profile_skin(
     Ok(())
 }
 
+#[tauri::command]
+async fn refresh_profile_token(
+    state: State<'_, AppState>,
+    profile_id: String,
+) -> Result<(), String> {
+    let mut profiles = state.profile_store.load();
+    let profile = profiles
+        .iter_mut()
+        .find(|p| p.id == profile_id)
+        .ok_or("Profile not found")?;
+
+    if profile.microsoft {
+        if let Some(refresh_token) = &profile.refresh_token {
+            if let Ok(new_msa_tokens) = crate::msa::refresh_msa_token(refresh_token).await {
+                if let Ok((xbl_token, uhs)) =
+                    crate::msa::auth_xbox_live(&new_msa_tokens.access_token).await
+                {
+                    if let Ok(xsts_token) = crate::msa::auth_xsts(&xbl_token).await {
+                        if let Ok(mc_token) = crate::msa::auth_minecraft(&uhs, &xsts_token).await {
+                            profile.access_token = Some(mc_token);
+                            profile.refresh_token = Some(new_msa_tokens.refresh_token);
+                            let _ = state.profile_store.save(&profiles);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -509,7 +540,8 @@ pub fn run() {
             add_skin_to_wardrobe,
             remove_skin_from_wardrobe,
             apply_skin,
-            refresh_profile_skin
+            refresh_profile_skin,
+            refresh_profile_token
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -62,6 +62,7 @@ interface LauncherStore {
   selectVersion: (id: string) => Promise<void>;
   fetchWardrobe: () => Promise<void>;
   refreshProfileSkin: (profileId: string) => Promise<void>;
+  refreshProfileToken: (profileId: string) => Promise<void>;
   addSkinToWardrobe: (
     fileBytes: number[],
     name: string,
@@ -171,6 +172,16 @@ export const useLauncherStore = create<LauncherStore>((set, get) => ({
       await get().fetchProfiles();
     } catch (error) {
       console.error("Failed to refresh profile skin:", error);
+    }
+  },
+  refreshProfileToken: async (profileId: string) => {
+    try {
+      await invoke("refresh_profile_token", { profileId });
+      // We don't need to fetch profiles again immediately,
+      // but we do it just in case token state is exposed in UI someday.
+      await get().fetchProfiles();
+    } catch (error) {
+      console.error("Failed to refresh profile token:", error);
     }
   },
   addSkinToWardrobe: async (

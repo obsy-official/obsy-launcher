@@ -20,6 +20,7 @@ const App = () => {
     fetchProfiles,
     fetchVersions,
     refreshProfileSkin,
+    refreshProfileToken,
   } = useLauncherStore();
   const { i18n } = useTranslation();
   const [updateStatus, setUpdateStatus] = useState<string | null>(null);
@@ -75,11 +76,14 @@ const App = () => {
   useEffect(() => {
     if (state?.selectedProfileId) {
       setIsSkinLoading(true);
+      // Trigger background token refresh
+      refreshProfileToken(state.selectedProfileId);
+
       refreshProfileSkin(state.selectedProfileId).finally(() => {
         setIsSkinLoading(false);
       });
     }
-  }, [state?.selectedProfileId, refreshProfileSkin]);
+  }, [state?.selectedProfileId, refreshProfileSkin, refreshProfileToken]);
 
   const selectedProfile = state?.selectedProfileId
     ? profiles.find((p) => p.id === state.selectedProfileId)
