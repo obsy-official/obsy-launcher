@@ -1,6 +1,7 @@
 pub mod auth;
 pub mod minecraft;
 pub mod msa;
+pub mod open_launcher;
 pub mod state;
 pub mod wardrobe;
 
@@ -186,12 +187,17 @@ async fn launch_game(
         &mc_dir_str,
         &java_path,
         open_launcher::version::Version {
-            minecraft_version: version_id,
+            minecraft_version: version_id.clone(),
             loader: None,
             loader_version: None,
         },
     )
     .await;
+
+    let mut iso_dir = mc_dir.clone();
+    iso_dir.push("instances");
+    iso_dir.push(&version_id);
+    launcher.set_execution_directory(iso_dir);
 
     launcher.auth(auth);
     launcher.custom_resolution(
@@ -506,6 +512,29 @@ async fn refresh_profile_token(
     Ok(())
 }
 
+#[tauri::command]
+fn open_version_folder(
+    version_id: String,
+    app: tauri::AppHandle,
+) -> Result<(), String> {
+    use tauri_plugin_opener::OpenerExt;
+
+    let mut mc_dir = crate::minecraft::versions::get_minecraft_dir();
+
+    mc_dir.push("instances");
+    mc_dir.push(&version_id);
+
+    if !mc_dir.exists() {
+        let _ = std::fs::create_dir_all(&mc_dir);
+    }
+
+    app.opener()
+        .open_path(mc_dir.to_string_lossy().to_string(), None::<&str>)
+        .map_err(|e| e.to_string())?;
+
+    Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -541,7 +570,8 @@ pub fn run() {
             remove_skin_from_wardrobe,
             apply_skin,
             refresh_profile_skin,
-            refresh_profile_token
+            refresh_profile_token,
+            open_version_folder
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

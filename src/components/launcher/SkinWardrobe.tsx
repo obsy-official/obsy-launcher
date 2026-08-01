@@ -109,8 +109,8 @@ export const SkinWardrobe = () => {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="classic">Classic</SelectItem>
-                  <SelectItem value="slim">Slim</SelectItem>
+                  <SelectItem value="classic">{t("wardrobe.classic")}</SelectItem>
+                  <SelectItem value="slim">{t("wardrobe.slim")}</SelectItem>
                 </SelectContent>
               </Select>
               <Button

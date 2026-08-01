@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { IdleAnimation, SkinViewer as Skinview3D } from "skinview3d";
+import { WalkingAnimation, SkinViewer as Skinview3D } from "skinview3d";
 
 interface SkinViewerProps {
   skinUrl: string;
@@ -29,7 +29,7 @@ export const SkinViewer = ({
         width,
         height,
       });
-      viewerRef.current.animation = new IdleAnimation();
+      viewerRef.current.animation = new WalkingAnimation();
     }
 
     setError(null);

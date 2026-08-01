@@ -157,7 +157,7 @@ export const ProfileSelector = () => {
           </DialogTrigger>
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
-              <DialogTitle>Add Profile</DialogTitle>
+              <DialogTitle>{t("profile.addProfileTitle")}</DialogTitle>
             </DialogHeader>
             <Tabs defaultValue="offline" className="w-full">
               <TabsList className="grid w-full grid-cols-2">

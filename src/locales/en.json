@@ -20,11 +20,13 @@
       "enterNickname": "Enter your nickname",
       "cancel": "Cancel",
       "add": "Add",
+      "addProfileTitle": "Add Profile",
       "deleteTooltip": "Delete profile"
     },
     "version": {
       "selectVersion": "Select version",
-      "noVersions": "No versions available"
+      "noVersions": "No versions available",
+      "openFolder": "Open version folder"
     },
     "launch": {
       "play": "Play",
@@ -45,6 +47,7 @@
       "memory": "Memory allocation (MB)",
       "autoMemory": "Automatically detect memory",
       "jvmArgs": "JVM Arguments",
+      "javaPath": "Java Path",
       "closeAfterLaunch": "Close launcher after start",
       "width": "Width",
       "height": "Height",
@@ -58,7 +61,9 @@
       "changeSkin": "Change Skin",
       "uploadSkin": "Upload Skin",
       "applySkin": "Apply Skin",
-      "emptyPreview": "Select a skin from your wardrobe to preview and apply it."
+      "emptyPreview": "Select a skin from your wardrobe to preview and apply it.",
+      "classic": "Classic",
+      "slim": "Slim"
     }
   }
 }

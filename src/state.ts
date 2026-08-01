@@ -60,6 +60,7 @@ interface LauncherStore {
   removeProfile: (id: string) => Promise<void>;
   fetchVersions: () => Promise<void>;
   selectVersion: (id: string) => Promise<void>;
+  openVersionFolder: (versionId: string) => Promise<void>;
   fetchWardrobe: () => Promise<void>;
   refreshProfileSkin: (profileId: string) => Promise<void>;
   refreshProfileToken: (profileId: string) => Promise<void>;
@@ -156,6 +157,13 @@ export const useLauncherStore = create<LauncherStore>((set, get) => ({
       }
     } catch (error) {
       console.error("Failed to select version:", error);
+    }
+  },
+  openVersionFolder: async (versionId: string) => {
+    try {
+      await invoke("open_version_folder", { versionId });
+    } catch (error) {
+      console.error("Failed to open version folder:", error);
     }
   },
   fetchWardrobe: async () => {

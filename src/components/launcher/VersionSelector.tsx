@@ -1,3 +1,4 @@
+import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -6,12 +7,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Cloud, HardDrive } from "lucide-react";
-import { useTranslation } from "react-i18next";
 import { useLauncherStore } from "@/state";
+import { Cloud, HardDrive, FolderOpen } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 export const VersionSelector = () => {
-  const { state, versions, selectVersion } = useLauncherStore();
+  const { state, versions, selectVersion, openVersionFolder } = useLauncherStore();
   const { t } = useTranslation();
 
   if (!state) return null;
@@ -19,7 +20,8 @@ export const VersionSelector = () => {
   return (
     <div className="flex flex-col gap-2">
       <Label>{t("version.selectVersion")}</Label>
-      <Select
+      <div className="flex gap-2">
+        <Select
         value={state.selectedVersionId ?? undefined}
         onValueChange={(val) => {
           if (val) selectVersion(val);
@@ -75,6 +77,17 @@ export const VersionSelector = () => {
           )}
         </SelectContent>
       </Select>
+      {state.selectedVersionId && (
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={() => openVersionFolder(state.selectedVersionId!)}
+          title={t("version.openFolder")}
+        >
+          <FolderOpen className="h-4 w-4" />
+        </Button>
+      )}
+      </div>
     </div>
   );
 };

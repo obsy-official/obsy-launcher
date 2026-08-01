@@ -11,9 +11,9 @@ import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useLauncherStore } from "@/state";
 import { Settings } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { useLauncherStore } from "@/state";
 
 export const SettingsDialog = () => {
   const { state, updateState, fetchVersions } = useLauncherStore();
@@ -47,7 +47,7 @@ export const SettingsDialog = () => {
 
           <TabsContent value="game" className="flex flex-col gap-4 py-4">
             <div className="flex items-center justify-between">
-              <Label htmlFor="auto-memory" className="flex flex-col gap-1">
+              <Label htmlFor="auto-memory" className="flex flex-col items-start gap-1">
                 <span>{t("settings.autoMemory")}</span>
               </Label>
               <Switch
@@ -112,7 +112,7 @@ export const SettingsDialog = () => {
             <div className="flex items-center justify-between">
               <Label
                 htmlFor="close-after-launch"
-                className="flex flex-col gap-1"
+                className="flex flex-col items-start gap-1"
               >
                 <span>{t("settings.closeAfterLaunch")}</span>
               </Label>
@@ -124,6 +124,8 @@ export const SettingsDialog = () => {
                 }
               />
             </div>
+
+
           </TabsContent>
 
           <TabsContent value="window" className="flex flex-col gap-4 py-4">
@@ -157,7 +159,7 @@ export const SettingsDialog = () => {
             </div>
 
             <div className="flex items-center justify-between">
-              <Label htmlFor="fullscreen" className="flex flex-col gap-1">
+              <Label htmlFor="fullscreen" className="flex flex-col items-start gap-1">
                 <span>{t("settings.fullscreen")}</span>
               </Label>
               <Switch
@@ -172,7 +174,7 @@ export const SettingsDialog = () => {
 
           <TabsContent value="versions" className="flex flex-col gap-4 py-4">
             <div className="flex items-center justify-between">
-              <Label htmlFor="show-releases" className="flex flex-col gap-1">
+              <Label htmlFor="show-releases" className="flex flex-col items-start gap-1">
                 <span>{t("settings.showReleases")}</span>
               </Label>
               <Switch
@@ -185,7 +187,7 @@ export const SettingsDialog = () => {
               />
             </div>
             <div className="flex items-center justify-between">
-              <Label htmlFor="show-snapshots" className="flex flex-col gap-1">
+              <Label htmlFor="show-snapshots" className="flex flex-col items-start gap-1">
                 <span>{t("settings.showSnapshots")}</span>
               </Label>
               <Switch
@@ -198,7 +200,7 @@ export const SettingsDialog = () => {
               />
             </div>
             <div className="flex items-center justify-between">
-              <Label htmlFor="show-old" className="flex flex-col gap-1">
+              <Label htmlFor="show-old" className="flex flex-col items-start gap-1">
                 <span>{t("settings.showOld")}</span>
               </Label>
               <Switch

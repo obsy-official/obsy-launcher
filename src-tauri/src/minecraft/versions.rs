@@ -25,15 +25,15 @@ pub async fn get_mojang_versions() -> Result<Vec<MinecraftVersion>, String> {
 pub fn get_minecraft_dir() -> PathBuf {
     let mut path = dirs::data_dir().unwrap_or_else(|| PathBuf::from("."));
     if cfg!(target_os = "macos") {
-        path.push("minecraft");
+        path.push("obsy");
     } else if cfg!(target_os = "windows") {
-        path.push(".minecraft");
+        path.push(".obsy");
     } else {
         if let Some(home) = dirs::home_dir() {
             path = home;
-            path.push(".minecraft");
+            path.push(".obsy");
         } else {
-            path.push(".minecraft");
+            path.push(".obsy");
         }
     }
     path
