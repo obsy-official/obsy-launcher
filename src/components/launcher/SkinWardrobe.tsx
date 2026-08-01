@@ -17,6 +17,7 @@ import { Check, Plus, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { SkinViewer } from "./SkinViewer";
+import { motion, AnimatePresence } from "framer-motion";
 
 export const SkinWardrobe = () => {
   const {
@@ -79,13 +80,15 @@ export const SkinWardrobe = () => {
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <Button
-        variant="outline"
-        className="mt-4 w-full"
-        onClick={() => setIsOpen(true)}
-      >
-        {t("wardrobe.changeSkin")}
-      </Button>
+      <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="w-full">
+        <Button
+          variant="outline"
+          className="mt-4 w-full transition-all duration-300 hover:bg-primary/10 hover:text-primary hover:border-primary/50"
+          onClick={() => setIsOpen(true)}
+        >
+          {t("wardrobe.changeSkin")}
+        </Button>
+      </motion.div>
       <DialogContent className="sm:max-w-4xl">
         <DialogHeader>
           <DialogTitle>{t("wardrobe.title")}</DialogTitle>
@@ -105,7 +108,7 @@ export const SkinWardrobe = () => {
                 value={uploadSlim ? "slim" : "classic"}
                 onValueChange={(v) => setUploadSlim(v === "slim")}
               >
-                <SelectTrigger className="w-[120px]">
+                <SelectTrigger className="w-[120px] transition-colors hover:border-primary/50">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -113,85 +116,120 @@ export const SkinWardrobe = () => {
                   <SelectItem value="slim">{t("wardrobe.slim")}</SelectItem>
                 </SelectContent>
               </Select>
-              <Button
-                onClick={() => fileInputRef.current?.click()}
-                className="flex-1"
-                variant="secondary"
-              >
-                <Plus className="mr-2 h-4 w-4" />
-                {t("wardrobe.uploadSkin")}
-              </Button>
+              <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="flex-1">
+                <Button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="w-full transition-all hover:bg-secondary/80"
+                  variant="secondary"
+                >
+                  <Plus className="mr-2 h-4 w-4" />
+                  {t("wardrobe.uploadSkin")}
+                </Button>
+              </motion.div>
             </div>
 
             <div className="border-border/50 bg-muted/20 min-h-0 flex-1 overflow-y-auto rounded-md border p-2">
               <div className="grid grid-cols-3 gap-2">
-                {wardrobe
-                  .filter(
-                    (s) => !s.profileId || s.profileId === activeProfile?.id,
-                  )
-                  .map((skin) => (
-                    <div
-                      key={skin.id}
-                      className={`hover:border-primary/50 relative aspect-square cursor-pointer overflow-hidden rounded-md border-2 transition-colors ${selectedSkinId === skin.id ? "border-primary" : "bg-muted/50 border-transparent"}`}
-                      onClick={() => setSelectedSkinId(skin.id)}
-                    >
-                      <img
-                        src={skin.base64Data}
-                        alt={skin.name}
-                        style={{ imageRendering: "pixelated" }}
-                        className="h-full w-full object-contain p-2"
-                      />
-                      {selectedSkinId === skin.id && (
-                        <div className="bg-primary text-primary-foreground absolute top-1 right-1 rounded-full p-0.5">
-                          <Check className="h-3 w-3" />
-                        </div>
-                      )}
-                    </div>
-                  ))}
+                <AnimatePresence>
+                  {wardrobe
+                    .filter(
+                      (s) => !s.profileId || s.profileId === activeProfile?.id,
+                    )
+                    .map((skin) => (
+                      <motion.div
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.9 }}
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        key={skin.id}
+                        className={`hover:border-primary/50 relative aspect-square cursor-pointer overflow-hidden rounded-md border-2 transition-all duration-300 ${selectedSkinId === skin.id ? "border-primary shadow-md shadow-primary/20" : "bg-muted/50 border-transparent"}`}
+                        onClick={() => setSelectedSkinId(skin.id)}
+                      >
+                        <img
+                          src={skin.base64Data}
+                          alt={skin.name}
+                          style={{ imageRendering: "pixelated" }}
+                          className="h-full w-full object-contain p-2"
+                        />
+                        <AnimatePresence>
+                          {selectedSkinId === skin.id && (
+                            <motion.div 
+                              initial={{ opacity: 0, scale: 0 }}
+                              animate={{ opacity: 1, scale: 1 }}
+                              exit={{ opacity: 0, scale: 0 }}
+                              className="bg-primary text-primary-foreground absolute top-1 right-1 rounded-full p-0.5"
+                            >
+                              <Check className="h-3 w-3" />
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </motion.div>
+                    ))}
+                </AnimatePresence>
               </div>
             </div>
           </div>
 
           <div className="border-border/50 bg-muted/10 relative flex w-1/2 flex-col items-center gap-4 rounded-md border p-4">
-            {selectedSkin ? (
-              <>
-                <Button
-                  variant="destructive"
-                  size="icon"
-                  className="absolute top-2 right-2 h-8 w-8"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    removeSkinFromWardrobe(selectedSkin.id);
-                    if (selectedSkinId === selectedSkin.id)
-                      setSelectedSkinId(null);
-                  }}
+            <AnimatePresence mode="wait">
+              {selectedSkin ? (
+                <motion.div
+                  key={selectedSkin.id}
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  transition={{ duration: 0.2 }}
+                  className="flex flex-col items-center justify-between w-full h-full"
                 >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-                <div className="flex w-full flex-1 items-center justify-center">
-                  <SkinViewer
-                    skinUrl={selectedSkin.base64Data}
-                    slim={selectedSkin.slim}
-                    width={180}
-                    height={300}
-                  />
-                </div>
-                <div className="w-full truncate text-center text-sm font-medium">
-                  {selectedSkin.name}
-                </div>
-                <Button
-                  onClick={handleApply}
-                  className="w-full"
-                  disabled={!state?.selectedProfileId}
+                  <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} className="absolute top-2 right-2">
+                    <Button
+                      variant="destructive"
+                      size="icon"
+                      className="h-8 w-8 transition-colors hover:bg-destructive/90"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        removeSkinFromWardrobe(selectedSkin.id);
+                        if (selectedSkinId === selectedSkin.id)
+                          setSelectedSkinId(null);
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </motion.div>
+                  <div className="flex w-full flex-1 items-center justify-center pt-4">
+                    <SkinViewer
+                      skinUrl={selectedSkin.base64Data}
+                      slim={selectedSkin.slim}
+                      width={180}
+                      height={300}
+                    />
+                  </div>
+                  <div className="w-full truncate text-center text-sm font-medium">
+                    {selectedSkin.name}
+                  </div>
+                  <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="w-full mt-auto">
+                    <Button
+                      onClick={handleApply}
+                      className="w-full transition-all shadow-md hover:shadow-lg hover:bg-primary/90"
+                      disabled={!state?.selectedProfileId}
+                    >
+                      {t("wardrobe.applySkin")}
+                    </Button>
+                  </motion.div>
+                </motion.div>
+              ) : (
+                <motion.div 
+                  key="empty"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="text-muted-foreground flex flex-1 items-center justify-center text-center text-sm"
                 >
-                  {t("wardrobe.applySkin")}
-                </Button>
-              </>
-            ) : (
-              <div className="text-muted-foreground flex flex-1 items-center justify-center text-center text-sm">
-                {t("wardrobe.emptyPreview")}
-              </div>
-            )}
+                  {t("wardrobe.emptyPreview")}
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         </div>
       </DialogContent>

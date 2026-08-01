@@ -111,11 +111,20 @@ code {
     @apply border-border outline-ring/50 scroll-smooth;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply text-foreground;
+    background: linear-gradient(-45deg, #0a0a0a, #130b1c, #0a1128, #050514);
+    background-size: 400% 400%;
+    animation: gradientBg 20s ease infinite;
   }
   html {
     @apply font-sans;
   }
+}
+
+@keyframes gradientBg {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
 }
 
 .dark {

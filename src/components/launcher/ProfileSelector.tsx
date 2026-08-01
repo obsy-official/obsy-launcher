@@ -23,6 +23,8 @@ import { ExternalLink, Loader2, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import { motion, AnimatePresence } from "framer-motion";
+
 export const ProfileSelector = () => {
   const {
     state,
@@ -87,7 +89,7 @@ export const ProfileSelector = () => {
             if (val) selectProfile(val as string);
           }}
         >
-          <SelectTrigger className="w-full">
+          <SelectTrigger className="w-full transition-all duration-300 hover:border-primary/50 focus:ring-primary/20">
             <SelectValue placeholder={t("profile.selectAccount")}>
               {(val: any) => {
                 if (!val) return null;
@@ -98,7 +100,7 @@ export const ProfileSelector = () => {
                     <img
                       src={`https://mc-heads.net/avatar/${p.username}/32`}
                       alt={p.username}
-                      className="bg-muted h-5 w-5 rounded-xs"
+                      className="bg-muted h-5 w-5 rounded-xs shadow-sm"
                     />
                     <span>
                       {p.username}{" "}
@@ -120,7 +122,7 @@ export const ProfileSelector = () => {
               </SelectItem>
             ) : (
               profiles.map((p) => (
-                <SelectItem key={p.id} value={p.id}>
+                <SelectItem key={p.id} value={p.id} className="transition-colors hover:bg-accent">
                   <div className="flex items-center gap-2">
                     <img
                       src={`https://mc-heads.net/avatar/${p.username}/32`}
@@ -152,94 +154,111 @@ export const ProfileSelector = () => {
             }
           }}
         >
-          <DialogTrigger render={<Button variant="outline" size="icon" />}>
-            <Plus className="h-4 w-4" />
-          </DialogTrigger>
+          <DialogTrigger render={<motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}><Button variant="outline" size="icon" className="transition-colors hover:bg-primary/10 hover:text-primary"><Plus className="h-4 w-4" /></Button></motion.div>} />
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
               <DialogTitle>{t("profile.addProfileTitle")}</DialogTitle>
             </DialogHeader>
             <Tabs defaultValue="offline" className="w-full">
               <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="offline">
+                <TabsTrigger value="offline" className="transition-all">
                   {t("profile.offline")}
                 </TabsTrigger>
-                <TabsTrigger value="microsoft">
+                <TabsTrigger value="microsoft" className="transition-all">
                   {t("profile.microsoft")}
                 </TabsTrigger>
               </TabsList>
 
-              <TabsContent value="offline" className="flex flex-col gap-4 py-4">
-                <div className="flex flex-col gap-2">
-                  <Label htmlFor="username">{t("profile.username")}</Label>
-                  <Input
-                    id="username"
-                    placeholder={t("profile.enterNickname")}
-                    value={newUsername}
-                    onChange={(e) => setNewUsername(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && handleAddProfile()}
-                  />
-                </div>
-                <Button
-                  onClick={handleAddProfile}
-                  disabled={!newUsername.trim()}
-                  className="mt-2"
-                >
-                  {t("profile.addOfflineProfile")}
-                </Button>
-              </TabsContent>
-
-              <TabsContent
-                value="microsoft"
-                className="flex flex-col gap-4 py-4"
-              >
-                {!msaData && !isMsaPolling && (
-                  <Button onClick={handleMsaAuth} className="w-full">
-                    {t("profile.addMicrosoftProfile")}
-                  </Button>
-                )}
-                {msaData && (
-                  <div className="flex flex-col items-center justify-center gap-4 py-4 text-center">
-                    <p className="text-muted-foreground text-sm">
-                      {t("profile.microsoftLoginInstructions")}
-                    </p>
-                    <div className="bg-muted rounded-lg px-4 py-2 text-3xl font-bold tracking-widest select-all">
-                      {msaData.user_code}
+              <div className="overflow-hidden relative">
+                <TabsContent value="offline" className="flex flex-col gap-4 py-4 mt-0">
+                  <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.2 }} className="flex flex-col gap-4">
+                    <div className="flex flex-col gap-2">
+                      <Label htmlFor="username">{t("profile.username")}</Label>
+                      <Input
+                        id="username"
+                        placeholder={t("profile.enterNickname")}
+                        value={newUsername}
+                        onChange={(e) => setNewUsername(e.target.value)}
+                        onKeyDown={(e) => e.key === "Enter" && handleAddProfile()}
+                        className="transition-all hover:border-primary/50 focus-visible:ring-primary/20"
+                      />
                     </div>
                     <Button
-                      variant="outline"
-                      className="mt-2 w-full"
-                      onClick={() => openUrl(msaData.verification_uri)}
+                      onClick={handleAddProfile}
+                      disabled={!newUsername.trim()}
+                      className="mt-2 transition-all"
                     >
-                      <ExternalLink className="mr-2 h-4 w-4" />
-                      {t("profile.microsoftLoginLink")}
+                      {t("profile.addOfflineProfile")}
                     </Button>
-                    <div className="text-muted-foreground mt-4 flex animate-pulse items-center justify-center gap-2 text-sm">
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      {t("profile.microsoftLoginWaiting")}
-                    </div>
-                  </div>
-                )}
-                {msaError && (
-                  <div className="text-destructive mt-2 text-center text-sm">
-                    {t("profile.microsoftLoginError")}: {msaError}
-                  </div>
-                )}
-              </TabsContent>
+                  </motion.div>
+                </TabsContent>
+
+                <TabsContent
+                  value="microsoft"
+                  className="flex flex-col gap-4 py-4 mt-0"
+                >
+                  <motion.div initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.2 }} className="flex flex-col gap-4">
+                    {!msaData && !isMsaPolling && (
+                      <Button onClick={handleMsaAuth} className="w-full transition-all">
+                        {t("profile.addMicrosoftProfile")}
+                      </Button>
+                    )}
+                    {msaData && (
+                      <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="flex flex-col items-center justify-center gap-4 py-4 text-center">
+                        <p className="text-muted-foreground text-sm">
+                          {t("profile.microsoftLoginInstructions")}
+                        </p>
+                        <div className="bg-muted rounded-lg px-4 py-2 text-3xl font-bold tracking-widest select-all shadow-inner">
+                          {msaData.user_code}
+                        </div>
+                        <Button
+                          variant="outline"
+                          className="mt-2 w-full transition-all hover:bg-accent"
+                          onClick={() => openUrl(msaData.verification_uri)}
+                        >
+                          <ExternalLink className="mr-2 h-4 w-4" />
+                          {t("profile.microsoftLoginLink")}
+                        </Button>
+                        <div className="text-muted-foreground mt-4 flex items-center justify-center gap-2 text-sm">
+                          <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                          {t("profile.microsoftLoginWaiting")}
+                        </div>
+                      </motion.div>
+                    )}
+                    {msaError && (
+                      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-destructive mt-2 text-center text-sm bg-destructive/10 p-2 rounded-md">
+                        {t("profile.microsoftLoginError")}: {msaError}
+                      </motion.div>
+                    )}
+                  </motion.div>
+                </TabsContent>
+              </div>
             </Tabs>
           </DialogContent>
         </Dialog>
 
-        {state.selectedProfileId && (
-          <Button
-            variant="destructive"
-            size="icon"
-            title={t("profile.deleteTooltip")}
-            onClick={() => removeProfile(state.selectedProfileId!)}
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
-        )}
+        <AnimatePresence>
+          {state.selectedProfileId && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8, width: 0 }}
+              animate={{ opacity: 1, scale: 1, width: "auto" }}
+              exit={{ opacity: 0, scale: 0.8, width: 0 }}
+              transition={{ type: "spring", stiffness: 500, damping: 30 }}
+            >
+              <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                <Button
+                  variant="destructive"
+                  size="icon"
+                  title={t("profile.deleteTooltip")}
+                  onClick={() => removeProfile(state.selectedProfileId!)}
+                  className="transition-all hover:shadow-md hover:bg-destructive/90"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );

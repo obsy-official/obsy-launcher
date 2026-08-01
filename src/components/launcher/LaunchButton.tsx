@@ -7,6 +7,8 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useLauncherStore } from "@/state";
 
+import { motion, AnimatePresence } from "framer-motion";
+
 export const LaunchButton = () => {
   const { state } = useLauncherStore();
   const { t } = useTranslation();
@@ -54,28 +56,50 @@ export const LaunchButton = () => {
 
   return (
     <div className="mt-auto flex flex-col gap-3 pt-4">
-      <Button
-        size="lg"
-        className="h-14 w-full text-lg font-bold uppercase"
-        disabled={
-          !state.selectedProfileId || !state.selectedVersionId || isLaunching
-        }
-        onClick={handleLaunch}
+      <motion.div
+        whileHover={{ scale: 1.02 }}
+        whileTap={{ scale: 0.98 }}
+        transition={{ type: "spring", stiffness: 400, damping: 25 }}
       >
-        {isLaunching ? (
-          <div className="flex w-full flex-col items-center gap-1">
-            <span className="text-sm font-normal">
-              {t(`launch.${launchStatus}`)} {Math.round(launchProgress)}%
-            </span>
-            <Progress value={launchProgress} className="h-1.5 w-full" />
-          </div>
-        ) : (
-          <>
-            <Play className="mr-2 h-5 w-5 fill-current" />
-            {t("launch.play")}
-          </>
-        )}
-      </Button>
+        <Button
+          size="lg"
+          className="h-14 w-full text-lg font-bold uppercase transition-all duration-300 shadow-md hover:shadow-xl hover:bg-primary/90"
+          disabled={
+            !state.selectedProfileId || !state.selectedVersionId || isLaunching
+          }
+          onClick={handleLaunch}
+        >
+          <AnimatePresence mode="wait">
+            {isLaunching ? (
+              <motion.div
+                key="launching"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.2 }}
+                className="flex w-full flex-col items-center gap-1"
+              >
+                <span className="text-sm font-normal">
+                  {t(`launch.${launchStatus}`)} {Math.round(launchProgress)}%
+                </span>
+                <Progress value={launchProgress} className="h-1.5 w-full transition-all" />
+              </motion.div>
+            ) : (
+              <motion.div
+                key="play"
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 10 }}
+                transition={{ duration: 0.2 }}
+                className="flex items-center"
+              >
+                <Play className="mr-2 h-5 w-5 fill-current" />
+                {t("launch.play")}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </Button>
+      </motion.div>
     </div>
   );
 };

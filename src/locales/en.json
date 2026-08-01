@@ -64,6 +64,17 @@
       "emptyPreview": "Select a skin from your wardrobe to preview and apply it.",
       "classic": "Classic",
       "slim": "Slim"
+    },
+    "onboarding": {
+      "welcome": "Welcome to Obsy Launcher",
+      "description": "Experience Minecraft with smooth animations, native performance, and a beautiful UI.",
+      "getStarted": "Get Started",
+      "profilesTitle": "Set up your account",
+      "profilesDesc": "Add your Microsoft License or play offline. You can always manage your accounts later.",
+      "continue": "Continue",
+      "readyTitle": "Ready to play!",
+      "readyDesc": "Everything is set up. Let's dive in.",
+      "finish": "Launch"
     }
   }
 }
