@@ -36,4 +36,7 @@ export default defineConfig({
     minify: !process.env.TAURI_ENV_DEBUG ? "esbuild" : false,
     sourcemap: !!process.env.TAURI_ENV_DEBUG,
   },
+  esbuild: {
+    drop: process.env.TAURI_ENV_DEBUG ? [] : ["console", "debugger"],
+  },
 });
