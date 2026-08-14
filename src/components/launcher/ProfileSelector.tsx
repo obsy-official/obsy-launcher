@@ -89,7 +89,7 @@ export const ProfileSelector = () => {
             if (val) selectProfile(val as string);
           }}
         >
-          <SelectTrigger className="w-full transition-all duration-300 hover:border-primary/50 focus:ring-primary/20">
+          <SelectTrigger className="hover:border-primary/50 focus:ring-primary/20 w-full transition-all duration-300">
             <SelectValue placeholder={t("profile.selectAccount")}>
               {(val: any) => {
                 if (!val) return null;
@@ -122,7 +122,11 @@ export const ProfileSelector = () => {
               </SelectItem>
             ) : (
               profiles.map((p) => (
-                <SelectItem key={p.id} value={p.id} className="transition-colors hover:bg-accent">
+                <SelectItem
+                  key={p.id}
+                  value={p.id}
+                  className="hover:bg-accent transition-colors"
+                >
                   <div className="flex items-center gap-2">
                     <img
                       src={`https://mc-heads.net/avatar/${p.username}/32`}
@@ -154,7 +158,19 @@ export const ProfileSelector = () => {
             }
           }}
         >
-          <DialogTrigger render={<motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}><Button variant="outline" size="icon" className="transition-colors hover:bg-primary/10 hover:text-primary"><Plus className="h-4 w-4" /></Button></motion.div>} />
+          <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+            <DialogTrigger
+              render={
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="hover:bg-primary/10 hover:text-primary transition-colors"
+                />
+              }
+            >
+              <Plus className="h-4 w-4" />
+            </DialogTrigger>
+          </motion.div>
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
               <DialogTitle>{t("profile.addProfileTitle")}</DialogTitle>
@@ -169,9 +185,17 @@ export const ProfileSelector = () => {
                 </TabsTrigger>
               </TabsList>
 
-              <div className="overflow-hidden relative">
-                <TabsContent value="offline" className="flex flex-col gap-4 py-4 mt-0">
-                  <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.2 }} className="flex flex-col gap-4">
+              <div className="relative overflow-hidden">
+                <TabsContent
+                  value="offline"
+                  className="mt-0 flex flex-col gap-4 py-4"
+                >
+                  <motion.div
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="flex flex-col gap-4"
+                  >
                     <div className="flex flex-col gap-2">
                       <Label htmlFor="username">{t("profile.username")}</Label>
                       <Input
@@ -179,8 +203,10 @@ export const ProfileSelector = () => {
                         placeholder={t("profile.enterNickname")}
                         value={newUsername}
                         onChange={(e) => setNewUsername(e.target.value)}
-                        onKeyDown={(e) => e.key === "Enter" && handleAddProfile()}
-                        className="transition-all hover:border-primary/50 focus-visible:ring-primary/20"
+                        onKeyDown={(e) =>
+                          e.key === "Enter" && handleAddProfile()
+                        }
+                        className="hover:border-primary/50 focus-visible:ring-primary/20 transition-all"
                       />
                     </div>
                     <Button
@@ -195,38 +221,54 @@ export const ProfileSelector = () => {
 
                 <TabsContent
                   value="microsoft"
-                  className="flex flex-col gap-4 py-4 mt-0"
+                  className="mt-0 flex flex-col gap-4 py-4"
                 >
-                  <motion.div initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.2 }} className="flex flex-col gap-4">
+                  <motion.div
+                    initial={{ opacity: 0, x: 10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="flex flex-col gap-4"
+                  >
                     {!msaData && !isMsaPolling && (
-                      <Button onClick={handleMsaAuth} className="w-full transition-all">
+                      <Button
+                        onClick={handleMsaAuth}
+                        className="w-full transition-all"
+                      >
                         {t("profile.addMicrosoftProfile")}
                       </Button>
                     )}
                     {msaData && (
-                      <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="flex flex-col items-center justify-center gap-4 py-4 text-center">
+                      <motion.div
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="flex flex-col items-center justify-center gap-4 py-4 text-center"
+                      >
                         <p className="text-muted-foreground text-sm">
                           {t("profile.microsoftLoginInstructions")}
                         </p>
-                        <div className="bg-muted rounded-lg px-4 py-2 text-3xl font-bold tracking-widest select-all shadow-inner">
+                        <div className="bg-muted rounded-lg px-4 py-2 text-3xl font-bold tracking-widest shadow-inner select-all">
                           {msaData.user_code}
                         </div>
                         <Button
                           variant="outline"
-                          className="mt-2 w-full transition-all hover:bg-accent"
+                          className="hover:bg-accent mt-2 w-full transition-all"
                           onClick={() => openUrl(msaData.verification_uri)}
                         >
                           <ExternalLink className="mr-2 h-4 w-4" />
                           {t("profile.microsoftLoginLink")}
                         </Button>
                         <div className="text-muted-foreground mt-4 flex items-center justify-center gap-2 text-sm">
-                          <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                          <Loader2 className="text-primary h-4 w-4 animate-spin" />
                           {t("profile.microsoftLoginWaiting")}
                         </div>
                       </motion.div>
                     )}
                     {msaError && (
-                      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-destructive mt-2 text-center text-sm bg-destructive/10 p-2 rounded-md">
+                      <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="text-destructive bg-destructive/10 mt-2 rounded-md p-2 text-center text-sm"
+                      >
                         {t("profile.microsoftLoginError")}: {msaError}
                       </motion.div>
                     )}
@@ -245,13 +287,16 @@ export const ProfileSelector = () => {
               exit={{ opacity: 0, scale: 0.8, width: 0 }}
               transition={{ type: "spring", stiffness: 500, damping: 30 }}
             >
-              <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+              <motion.div
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
                 <Button
                   variant="destructive"
                   size="icon"
                   title={t("profile.deleteTooltip")}
                   onClick={() => removeProfile(state.selectedProfileId!)}
-                  className="transition-all hover:shadow-md hover:bg-destructive/90"
+                  className="hover:bg-destructive/90 transition-all hover:shadow-md"
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>

@@ -63,7 +63,7 @@ export const LaunchButton = () => {
       >
         <Button
           size="lg"
-          className="h-14 w-full text-lg font-bold uppercase transition-all duration-300 shadow-md hover:shadow-xl hover:bg-primary/90"
+          className="hover:bg-primary/90 h-14 w-full text-lg font-bold uppercase shadow-md transition-all duration-300 hover:shadow-xl"
           disabled={
             !state.selectedProfileId || !state.selectedVersionId || isLaunching
           }
@@ -82,7 +82,10 @@ export const LaunchButton = () => {
                 <span className="text-sm font-normal">
                   {t(`launch.${launchStatus}`)} {Math.round(launchProgress)}%
                 </span>
-                <Progress value={launchProgress} className="h-1.5 w-full transition-all" />
+                <Progress
+                  value={launchProgress}
+                  className="h-1.5 w-full transition-all"
+                />
               </motion.div>
             ) : (
               <motion.div

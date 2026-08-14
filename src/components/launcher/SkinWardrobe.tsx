@@ -80,10 +80,14 @@ export const SkinWardrobe = () => {
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="w-full">
+      <motion.div
+        whileHover={{ scale: 1.05 }}
+        whileTap={{ scale: 0.95 }}
+        className="w-full"
+      >
         <Button
           variant="outline"
-          className="mt-4 w-full transition-all duration-300 hover:bg-primary/10 hover:text-primary hover:border-primary/50"
+          className="hover:bg-primary/10 hover:text-primary hover:border-primary/50 mt-4 w-full transition-all duration-300"
           onClick={() => setIsOpen(true)}
         >
           {t("wardrobe.changeSkin")}
@@ -108,18 +112,26 @@ export const SkinWardrobe = () => {
                 value={uploadSlim ? "slim" : "classic"}
                 onValueChange={(v) => setUploadSlim(v === "slim")}
               >
-                <SelectTrigger className="w-[120px] transition-colors hover:border-primary/50">
-                  <SelectValue />
+                <SelectTrigger className="hover:border-primary/50 w-[120px] transition-colors">
+                  <SelectValue>
+                    {uploadSlim ? t("wardrobe.slim") : t("wardrobe.classic")}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="classic">{t("wardrobe.classic")}</SelectItem>
+                  <SelectItem value="classic">
+                    {t("wardrobe.classic")}
+                  </SelectItem>
                   <SelectItem value="slim">{t("wardrobe.slim")}</SelectItem>
                 </SelectContent>
               </Select>
-              <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="flex-1">
+              <motion.div
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                className="flex-1"
+              >
                 <Button
                   onClick={() => fileInputRef.current?.click()}
-                  className="w-full transition-all hover:bg-secondary/80"
+                  className="hover:bg-secondary/80 w-full transition-all"
                   variant="secondary"
                 >
                   <Plus className="mr-2 h-4 w-4" />
@@ -143,7 +155,7 @@ export const SkinWardrobe = () => {
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
                         key={skin.id}
-                        className={`hover:border-primary/50 relative aspect-square cursor-pointer overflow-hidden rounded-md border-2 transition-all duration-300 ${selectedSkinId === skin.id ? "border-primary shadow-md shadow-primary/20" : "bg-muted/50 border-transparent"}`}
+                        className={`hover:border-primary/50 relative aspect-square cursor-pointer overflow-hidden rounded-md border-2 transition-all duration-300 ${selectedSkinId === skin.id ? "border-primary shadow-primary/20 shadow-md" : "bg-muted/50 border-transparent"}`}
                         onClick={() => setSelectedSkinId(skin.id)}
                       >
                         <img
@@ -154,7 +166,7 @@ export const SkinWardrobe = () => {
                         />
                         <AnimatePresence>
                           {selectedSkinId === skin.id && (
-                            <motion.div 
+                            <motion.div
                               initial={{ opacity: 0, scale: 0 }}
                               animate={{ opacity: 1, scale: 1 }}
                               exit={{ opacity: 0, scale: 0 }}
@@ -180,13 +192,17 @@ export const SkinWardrobe = () => {
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -20 }}
                   transition={{ duration: 0.2 }}
-                  className="flex flex-col items-center justify-between w-full h-full"
+                  className="flex h-full w-full flex-col items-center justify-between"
                 >
-                  <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} className="absolute top-2 right-2">
+                  <motion.div
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.9 }}
+                    className="absolute top-2 right-2"
+                  >
                     <Button
                       variant="destructive"
                       size="icon"
-                      className="h-8 w-8 transition-colors hover:bg-destructive/90"
+                      className="hover:bg-destructive/90 h-8 w-8 transition-colors"
                       onClick={(e) => {
                         e.stopPropagation();
                         removeSkinFromWardrobe(selectedSkin.id);
@@ -208,10 +224,14 @@ export const SkinWardrobe = () => {
                   <div className="w-full truncate text-center text-sm font-medium">
                     {selectedSkin.name}
                   </div>
-                  <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="w-full mt-auto">
+                  <motion.div
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    className="mt-auto w-full"
+                  >
                     <Button
                       onClick={handleApply}
-                      className="w-full transition-all shadow-md hover:shadow-lg hover:bg-primary/90"
+                      className="hover:bg-primary/90 w-full shadow-md transition-all hover:shadow-lg"
                       disabled={!state?.selectedProfileId}
                     >
                       {t("wardrobe.applySkin")}
@@ -219,7 +239,7 @@ export const SkinWardrobe = () => {
                   </motion.div>
                 </motion.div>
               ) : (
-                <motion.div 
+                <motion.div
                   key="empty"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}

@@ -1,8 +1,6 @@
 use super::{
     events,
     libraries::{get_lib_path, get_libraries_classpath},
-    utils::{extract_file, try_download_file, LauncherError},
-    Launcher,
 };
 use async_process::Command;
 use serde_json::{Map, Value};

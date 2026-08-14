@@ -278,7 +278,37 @@ async fn launch_game(
     )
     .map_err(|e| e.to_string())?;
 
-    let mut child = launcher.launch().map_err(|e| e.to_string())?;
+    let mut command = launcher.command().map_err(|e| e.to_string())?;
+    command.stdout(std::process::Stdio::piped());
+    command.stderr(std::process::Stdio::piped());
+
+    let mut child = command.spawn().map_err(|e| e.to_string())?;
+
+    let app_clone_out = app.clone();
+    if let Some(stdout) = child.stdout.take() {
+        std::thread::spawn(move || {
+            use std::io::{BufRead, BufReader};
+            let reader = BufReader::new(stdout);
+            for line in reader.lines() {
+                if let Ok(line) = line {
+                    let _ = app_clone_out.emit("minecraft-log", line);
+                }
+            }
+        });
+    }
+
+    let app_clone_err = app.clone();
+    if let Some(stderr) = child.stderr.take() {
+        std::thread::spawn(move || {
+            use std::io::{BufRead, BufReader};
+            let reader = BufReader::new(stderr);
+            for line in reader.lines() {
+                if let Ok(line) = line {
+                    let _ = app_clone_err.emit("minecraft-error", line);
+                }
+            }
+        });
+    }
 
     let app_clone_2 = app.clone();
     let _ = app.emit(
@@ -513,10 +543,7 @@ async fn refresh_profile_token(
 }
 
 #[tauri::command]
-fn open_version_folder(
-    version_id: String,
-    app: tauri::AppHandle,
-) -> Result<(), String> {
+fn open_version_folder(version_id: String, app: tauri::AppHandle) -> Result<(), String> {
     use tauri_plugin_opener::OpenerExt;
 
     let mut mc_dir = crate::minecraft::versions::get_minecraft_dir();

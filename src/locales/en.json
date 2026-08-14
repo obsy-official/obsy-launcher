@@ -1,7 +1,17 @@
 {
   "translation": {
     "app": {
-      "title": "Obsy Launcher"
+      "title": "obsy",
+      "skinNotFound": "Skin not found"
+    },
+    "updater": {
+      "downloading": "Downloading update {{version}}...",
+      "downloadingProgress": "Downloading update {{version}}: {{progress}}%",
+      "downloaded": "Update downloaded! Restarting..."
+    },
+    "console": {
+      "title": "Console Logs",
+      "empty": "No logs captured yet..."
     },
     "profile": {
       "selectProfile": "Select profile",

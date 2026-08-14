@@ -19,7 +19,6 @@ mod utils;
 /// The `Launcher` struct is the main struct of the package. It is used to configure and launch a Minecraft game.
 pub struct Launcher {
     game_dir: PathBuf,
-    game_dir_str: String,
     execution_dir: Option<PathBuf>,
     java_executable: PathBuf,
     version: version::InternalVersion,
@@ -242,7 +241,6 @@ impl Launcher {
 
         Launcher {
             game_dir: game_dir.to_path_buf(),
-            game_dir_str: game_dir.to_str().unwrap().to_string(),
             execution_dir: None,
             java_executable: java_executable.to_path_buf(),
             version: version::InternalVersion::new(
@@ -371,7 +369,10 @@ impl Launcher {
             return Err("Please install a version before launching".into());
         }
 
-        let actual_game_dir = self.execution_dir.clone().unwrap_or_else(|| self.game_dir.clone());
+        let actual_game_dir = self
+            .execution_dir
+            .clone()
+            .unwrap_or_else(|| self.game_dir.clone());
         let mut args = self.args.clone();
 
         let classpath_separator = match std::env::consts::OS {
@@ -467,7 +468,7 @@ impl Launcher {
             .unwrap()
             .contains_key("minecraftArguments")
         {
-            // Older versions of Minecraft and Forge used a single "minecraftArguments" string 
+            // Older versions of Minecraft and Forge used a single "minecraftArguments" string
             // instead of a structured array, so we must parse it manually here.
             if self.version.modded_profile.is_object()
                 && self
@@ -558,7 +559,10 @@ impl Launcher {
         );
         fields.insert("auth_player_name".to_string(), self.auth.username.clone());
         fields.insert("version_name".to_string(), self.version.id.clone());
-        fields.insert("game_directory".to_string(), actual_game_dir.to_str().unwrap().to_string());
+        fields.insert(
+            "game_directory".to_string(),
+            actual_game_dir.to_str().unwrap().to_string(),
+        );
         fields.insert(
             "assets_root".to_string(),
             self.game_dir.join("assets").to_str().unwrap().to_string(),

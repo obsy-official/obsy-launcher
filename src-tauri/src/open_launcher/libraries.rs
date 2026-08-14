@@ -282,7 +282,7 @@ pub(crate) async fn extract_natives(
 
         fs::remove_file(path).await?;
 
-        // Minecraft uses a natives.json file to track native libraries for the JVM, 
+        // Minecraft uses a natives.json file to track native libraries for the JVM,
         // so we must register our extracted native libraries there.
         natives_json_content.insert(name.to_string(), serde_json::Value::Array(extracted));
 

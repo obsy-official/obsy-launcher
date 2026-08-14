@@ -47,7 +47,10 @@ export const SettingsDialog = () => {
 
           <TabsContent value="game" className="flex flex-col gap-4 py-4">
             <div className="flex items-center justify-between">
-              <Label htmlFor="auto-memory" className="flex flex-col items-start gap-1">
+              <Label
+                htmlFor="auto-memory"
+                className="flex flex-col items-start gap-1"
+              >
                 <span>{t("settings.autoMemory")}</span>
               </Label>
               <Switch
@@ -124,8 +127,6 @@ export const SettingsDialog = () => {
                 }
               />
             </div>
-
-
           </TabsContent>
 
           <TabsContent value="window" className="flex flex-col gap-4 py-4">
@@ -159,7 +160,10 @@ export const SettingsDialog = () => {
             </div>
 
             <div className="flex items-center justify-between">
-              <Label htmlFor="fullscreen" className="flex flex-col items-start gap-1">
+              <Label
+                htmlFor="fullscreen"
+                className="flex flex-col items-start gap-1"
+              >
                 <span>{t("settings.fullscreen")}</span>
               </Label>
               <Switch
@@ -174,7 +178,10 @@ export const SettingsDialog = () => {
 
           <TabsContent value="versions" className="flex flex-col gap-4 py-4">
             <div className="flex items-center justify-between">
-              <Label htmlFor="show-releases" className="flex flex-col items-start gap-1">
+              <Label
+                htmlFor="show-releases"
+                className="flex flex-col items-start gap-1"
+              >
                 <span>{t("settings.showReleases")}</span>
               </Label>
               <Switch
@@ -187,7 +194,10 @@ export const SettingsDialog = () => {
               />
             </div>
             <div className="flex items-center justify-between">
-              <Label htmlFor="show-snapshots" className="flex flex-col items-start gap-1">
+              <Label
+                htmlFor="show-snapshots"
+                className="flex flex-col items-start gap-1"
+              >
                 <span>{t("settings.showSnapshots")}</span>
               </Label>
               <Switch
@@ -200,7 +210,10 @@ export const SettingsDialog = () => {
               />
             </div>
             <div className="flex items-center justify-between">
-              <Label htmlFor="show-old" className="flex flex-col items-start gap-1">
+              <Label
+                htmlFor="show-old"
+                className="flex flex-col items-start gap-1"
+              >
                 <span>{t("settings.showOld")}</span>
               </Label>
               <Switch

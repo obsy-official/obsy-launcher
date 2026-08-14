@@ -100,7 +100,7 @@ impl Launcher {
             current += object["size"].as_u64().unwrap();
             self.emit_progress("downloading_assets", name, total, current);
 
-            // Old versions of Minecraft do not use the hashed asset structure, 
+            // Old versions of Minecraft do not use the hashed asset structure,
             // so we copy them into legacy folders directly to support them.
             if self.version.profile["assets"].as_str().unwrap() == "legacy"
                 || self.version.profile["assets"].as_str().unwrap() == "pre-1.6"
@@ -118,7 +118,7 @@ impl Launcher {
     }
 
     async fn fix_log4j_vulnerability(&mut self) -> Result<(), Box<dyn Error + Send + Sync>> {
-        // Apply the official Mojang Log4j patch dynamically since older 
+        // Apply the official Mojang Log4j patch dynamically since older
         // game versions are still vulnerable.
         if self.version.profile["logging"].is_object()
             && self.version.profile["logging"]["client"].is_object()
