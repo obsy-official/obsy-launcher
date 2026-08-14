@@ -132,6 +132,7 @@ fn select_version(id: String, state: State<'_, AppState>, app: AppHandle) -> Res
 struct LaunchProgressPayload {
     status: String,
     progress: f32,
+    detail: Option<String>,
 }
 
 #[tauri::command]
@@ -197,6 +198,11 @@ async fn launch_game(
     let mut iso_dir = mc_dir.clone();
     iso_dir.push("instances");
     iso_dir.push(&version_id);
+
+    if !iso_dir.exists() {
+        let _ = std::fs::create_dir_all(&iso_dir);
+    }
+
     launcher.set_execution_directory(iso_dir);
 
     launcher.auth(auth);
@@ -204,6 +210,13 @@ async fn launch_game(
         launcher_state.screen_width as i32,
         launcher_state.screen_height as i32,
     );
+    #[cfg(target_os = "macos")]
+    {
+        launcher.jvm_arg("-XstartOnFirstThread");
+        launcher.jvm_arg("-Djava.awt.headless=false");
+        launcher.jvm_arg("-Dapple.awt.UIElement=false");
+    }
+
     launcher.jvm_arg(&format!("-Xmx{}M", launcher_state.memory_amount));
 
     if !launcher_state.jvm_arguments.is_empty() {
@@ -223,11 +236,31 @@ async fn launch_game(
                 0.0
             };
 
+            let (base, scale) = match prog.task.as_str() {
+                "checking_assets" | "downloading_assets" => (0.3, 0.3),
+                "checking_libraries" | "downloading_libraries" | "post_processing" => (0.6, 0.3),
+                "checking_natives" | "extracting_natives" => (0.9, 0.1),
+                _ => (0.0, 1.0),
+            };
+
+            let global_percentage = base + scale * percentage;
+
+            let detail = if prog.task == "downloading_assets" {
+                let current_mb = prog.current as f32 / 1_048_576.0;
+                let total_mb = prog.total as f32 / 1_048_576.0;
+                Some(format!("{:.1}/{:.1} MB", current_mb, total_mb))
+            } else if prog.task == "downloading_libraries" || prog.task == "extracting_natives" {
+                Some(format!("{}/{}", prog.current, prog.total))
+            } else {
+                None
+            };
+
             let _ = app_clone.emit(
                 "launch-progress",
                 LaunchProgressPayload {
                     status: prog.task.clone(),
-                    progress: percentage,
+                    progress: global_percentage,
+                    detail,
                 },
             );
         }
@@ -238,6 +271,7 @@ async fn launch_game(
         LaunchProgressPayload {
             status: "installing_version".to_string(),
             progress: 0.1,
+            detail: None,
         },
     )
     .map_err(|e| e.to_string())?;
@@ -251,6 +285,7 @@ async fn launch_game(
         LaunchProgressPayload {
             status: "installing_assets".to_string(),
             progress: 0.3,
+            detail: None,
         },
     )
     .map_err(|e| e.to_string())?;
@@ -261,6 +296,7 @@ async fn launch_game(
         LaunchProgressPayload {
             status: "installing_libraries".to_string(),
             progress: 0.6,
+            detail: None,
         },
     )
     .map_err(|e| e.to_string())?;
@@ -274,11 +310,16 @@ async fn launch_game(
         LaunchProgressPayload {
             status: "launching".to_string(),
             progress: 1.0,
+            detail: None,
         },
     )
     .map_err(|e| e.to_string())?;
 
     let mut command = launcher.command().map_err(|e| e.to_string())?;
+
+    // Debug: print the full command
+    println!("[LAUNCH] {:?}", command);
+
     command.stdout(std::process::Stdio::piped());
     command.stderr(std::process::Stdio::piped());
 
@@ -291,6 +332,7 @@ async fn launch_game(
             let reader = BufReader::new(stdout);
             for line in reader.lines() {
                 if let Ok(line) = line {
+                    println!("[MC STDOUT] {}", line);
                     let _ = app_clone_out.emit("minecraft-log", line);
                 }
             }
@@ -304,6 +346,7 @@ async fn launch_game(
             let reader = BufReader::new(stderr);
             for line in reader.lines() {
                 if let Ok(line) = line {
+                    eprintln!("[MC STDERR] {}", line);
                     let _ = app_clone_err.emit("minecraft-error", line);
                 }
             }
@@ -316,12 +359,15 @@ async fn launch_game(
         LaunchProgressPayload {
             status: "success".to_string(),
             progress: 1.0,
+            detail: None,
         },
     );
 
     if launcher_state.close_after_launch {
         if let Some(window) = app.get_webview_window("main") {
-            let _ = window.hide();
+            // macOS BUG: Hiding the parent window before Java AWT creates its window
+            // can cause the Java window to be completely invisible/backgrounded!
+            // let _ = window.hide();
 
             std::thread::spawn(move || {
                 let _ = child.wait();
@@ -331,6 +377,7 @@ async fn launch_game(
                     LaunchProgressPayload {
                         status: "success".to_string(),
                         progress: 1.0,
+                        detail: None,
                     },
                 );
             });
@@ -562,6 +609,40 @@ fn open_version_folder(version_id: String, app: tauri::AppHandle) -> Result<(), 
     Ok(())
 }
 
+#[tauri::command]
+fn delete_instance(
+    version_id: String,
+    state: State<'_, AppState>,
+    app: tauri::AppHandle,
+) -> Result<(), String> {
+    let mc_dir = crate::minecraft::versions::get_minecraft_dir();
+
+    let instance_dir = mc_dir.join("instances").join(&version_id);
+    if instance_dir.exists() {
+        let _ = std::fs::remove_dir_all(&instance_dir);
+    }
+
+    let version_dir = mc_dir.join("versions").join(&version_id);
+    if version_dir.exists() {
+        let _ = std::fs::remove_dir_all(&version_dir);
+    }
+
+    let natives_dir = mc_dir
+        .join("versions")
+        .join(format!("{}-natives", version_id));
+    if natives_dir.exists() {
+        let _ = std::fs::remove_dir_all(&natives_dir);
+    }
+
+    let mut current_state = state.launcher_state.lock().map_err(|e| e.to_string())?;
+    if current_state.selected_version_id.as_ref() == Some(&version_id) {
+        current_state.selected_version_id = None;
+        current_state.save(&app)?;
+    }
+
+    Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -598,7 +679,8 @@ pub fn run() {
             apply_skin,
             refresh_profile_skin,
             refresh_profile_token,
-            open_version_folder
+            open_version_folder,
+            delete_instance
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

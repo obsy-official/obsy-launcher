@@ -1,3 +1,4 @@
+use super::events;
 use super::utils::{try_download_file, LauncherError};
 use super::Launcher;
 use sha1::Digest;
@@ -57,7 +58,6 @@ impl Launcher {
         }
 
         let mut total: u64 = 0;
-        let mut current: u64 = 0;
         let mut objects_to_download = vec![];
 
         for (name, object) in index["objects"].as_object().unwrap() {
@@ -83,35 +83,63 @@ impl Launcher {
             self.emit_progress("downloading_assets", "", total, 0);
         }
 
+        let client = reqwest::Client::new();
+        let semaphore = std::sync::Arc::new(tokio::sync::Semaphore::new(50));
+        let mut tasks = vec![];
+        let current_progress = std::sync::Arc::new(std::sync::atomic::AtomicU64::new(0));
+
         for object in objects_to_download {
-            let name = object["name"].as_str().unwrap();
+            let name = object["name"].as_str().unwrap().to_string();
             let hash = object["hash"].as_str().unwrap().to_string();
+            let size = object["size"].as_u64().unwrap();
             let object_path = objects_dir.join(&hash[..2]).join(&hash);
 
-            fs::create_dir_all(object_path.parent().unwrap()).await?;
+            let client = client.clone();
+            let semaphore = semaphore.clone();
+            let current_progress = current_progress.clone();
+            let progress_sender = self.progress_sender.clone();
 
-            let object_url = format!(
-                "https://resources.download.minecraft.net/{}",
-                hash[..2].to_string() + "/" + &hash
-            );
+            let is_legacy = self.version.profile["assets"].as_str().unwrap() == "legacy"
+                || self.version.profile["assets"].as_str().unwrap() == "pre-1.6";
+            let resources_path = if is_legacy {
+                Some(self.game_dir.join("resources").join(&name))
+            } else {
+                None
+            };
 
-            try_download_file(&object_url, &object_path, &hash, 3).await?;
+            tasks.push(tokio::spawn(async move {
+                let _permit = semaphore.acquire().await.unwrap();
+                fs::create_dir_all(object_path.parent().unwrap()).await?;
 
-            current += object["size"].as_u64().unwrap();
-            self.emit_progress("downloading_assets", name, total, current);
+                let object_url = format!(
+                    "https://resources.download.minecraft.net/{}",
+                    hash[..2].to_string() + "/" + &hash
+                );
 
-            // Old versions of Minecraft do not use the hashed asset structure,
-            // so we copy them into legacy folders directly to support them.
-            if self.version.profile["assets"].as_str().unwrap() == "legacy"
-                || self.version.profile["assets"].as_str().unwrap() == "pre-1.6"
-            {
-                let resources_path = self
-                    .game_dir
-                    .join("resources")
-                    .join(object["name"].as_str().unwrap());
-                fs::create_dir_all(resources_path.parent().unwrap()).await?;
-                fs::copy(&object_path, &resources_path).await?;
-            }
+                try_download_file(&client, &object_url, &object_path, &hash, 3).await?;
+
+                let current =
+                    current_progress.fetch_add(size, std::sync::atomic::Ordering::SeqCst) + size;
+                let _ = progress_sender.send(events::Progress {
+                    task: "downloading_assets".to_string(),
+                    file: name,
+                    total,
+                    current,
+                });
+
+                // Old versions of Minecraft do not use the hashed asset structure,
+                // so we copy them into legacy folders directly to support them.
+                if let Some(resources_path) = resources_path {
+                    fs::create_dir_all(resources_path.parent().unwrap()).await?;
+                    fs::copy(&object_path, &resources_path).await?;
+                }
+
+                Ok::<(), Box<dyn Error + Send + Sync>>(())
+            }));
+        }
+
+        for task in tasks {
+            task.await.unwrap()?;
         }
 
         Ok(())

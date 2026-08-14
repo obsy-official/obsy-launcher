@@ -36,16 +36,29 @@
     "version": {
       "selectVersion": "Select version",
       "noVersions": "No versions available",
-      "openFolder": "Open version folder"
+      "openFolder": "Open version folder",
+      "deleteInstance": "Delete instance",
+      "confirmDelete": "Are you sure you want to delete this instance? This action cannot be undone.",
+      "cancel": "Cancel",
+      "delete": "Delete",
+      "searchVersion": "Search version..."
     },
     "launch": {
       "play": "Play",
+      "download": "Download",
       "starting": "Preparing...",
       "downloading_java": "Downloading Java...",
       "extracting_java": "Extracting Java...",
       "downloading_libs": "Downloading libraries...",
+      "downloading_libraries": "Downloading libraries...",
       "downloading_assets": "Downloading assets...",
+      "checking_assets": "Checking assets...",
       "checking_natives": "Checking natives...",
+      "checking_libraries": "Checking libraries...",
+      "extracting_natives": "Extracting natives...",
+      "installing_version": "Installing version...",
+      "installing_assets": "Installing assets...",
+      "installing_libraries": "Installing libraries...",
       "launching": "Starting Minecraft...",
       "success": "Success!"
     },

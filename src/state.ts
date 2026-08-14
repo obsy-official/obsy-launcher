@@ -61,6 +61,7 @@ interface LauncherStore {
   fetchVersions: () => Promise<void>;
   selectVersion: (id: string) => Promise<void>;
   openVersionFolder: (versionId: string) => Promise<void>;
+  deleteInstance: (versionId: string) => Promise<void>;
   fetchWardrobe: () => Promise<void>;
   refreshProfileSkin: (profileId: string) => Promise<void>;
   refreshProfileToken: (profileId: string) => Promise<void>;
@@ -164,6 +165,18 @@ export const useLauncherStore = create<LauncherStore>((set, get) => ({
       await invoke("open_version_folder", { versionId });
     } catch (error) {
       console.error("Failed to open version folder:", error);
+    }
+  },
+  deleteInstance: async (versionId: string) => {
+    try {
+      await invoke("delete_instance", { versionId });
+      await get().fetchVersions();
+      const currentState = get().state;
+      if (currentState?.selectedVersionId === versionId) {
+        set({ state: { ...currentState, selectedVersionId: null } });
+      }
+    } catch (error) {
+      console.error("Failed to delete instance:", error);
     }
   },
   fetchWardrobe: async () => {

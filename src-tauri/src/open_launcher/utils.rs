@@ -25,6 +25,7 @@ impl From<LauncherError> for Box<dyn Error + Send> {
 
 #[async_recursion]
 pub(crate) async fn try_download_file(
+    client: &reqwest::Client,
     url: &str,
     path: &std::path::Path,
     hash: &str,
@@ -33,7 +34,7 @@ pub(crate) async fn try_download_file(
     let url = url.replace(std::path::MAIN_SEPARATOR_STR, "/");
     let url = url.as_str();
 
-    let response = reqwest::get(url).await?;
+    let response = client.get(url).send().await?;
     let data = response.bytes().await?;
 
     let mut file = fs::File::create(path).await?;
@@ -50,7 +51,7 @@ pub(crate) async fn try_download_file(
     if downloaded_hash != hash {
         if retries > 0 {
             fs::remove_file(path).await?;
-            try_download_file(url, path, hash, retries - 1).await?;
+            try_download_file(client, url, path, hash, retries - 1).await?;
         } else {
             return Err(Box::from(LauncherError(format!(
                 "Failed to download file: {}",

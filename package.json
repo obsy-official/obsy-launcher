@@ -2,7 +2,7 @@
   "name": "obsy-launcher",
   "private": true,
   "description": "Obsy Launcher - A modern cross-platform Minecraft launcher",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -22,6 +22,7 @@
     "@tauri-apps/plugin-updater": "^2.10.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "cmdk": "^1.1.1",
     "framer-motion": "^12.43.0",
     "i18next": "^26.3.4",
     "lucide-react": "^1.23.0",

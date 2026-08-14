@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import { Play } from "lucide-react";
+import { Play, Download } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useLauncherStore } from "@/state";
@@ -10,23 +10,39 @@ import { useLauncherStore } from "@/state";
 import { motion, AnimatePresence } from "framer-motion";
 
 export const LaunchButton = () => {
-  const { state } = useLauncherStore();
+  const { state, versions } = useLauncherStore();
   const { t } = useTranslation();
 
   const [isLaunching, setIsLaunching] = useState(false);
   const [launchStatus, setLaunchStatus] = useState("");
   const [launchProgress, setLaunchProgress] = useState(0);
+  const [launchDetail, setLaunchDetail] = useState("");
+
+  const selectedVersion = versions.find(
+    (v) => v.id === state?.selectedVersionId,
+  );
+  const isDownloaded = selectedVersion?.isLocal ?? false;
 
   useEffect(() => {
     const unlisten = listen("launch-progress", (event) => {
-      const payload = event.payload as { status: string; progress: number };
+      const payload = event.payload as {
+        status: string;
+        progress: number;
+        detail?: string;
+      };
       setLaunchStatus(payload.status);
       setLaunchProgress(payload.progress * 100);
+      if (payload.detail) {
+        setLaunchDetail(payload.detail);
+      } else {
+        setLaunchDetail("");
+      }
       if (payload.status === "success") {
         setTimeout(() => {
           setIsLaunching(false);
           setLaunchStatus("");
           setLaunchProgress(0);
+          setLaunchDetail("");
         }, 2000);
       }
     });
@@ -41,13 +57,16 @@ export const LaunchButton = () => {
     setIsLaunching(true);
     setLaunchStatus("starting");
     setLaunchProgress(0);
+    setLaunchDetail("");
     try {
       await invoke("launch_game", {
         profileId: state.selectedProfileId,
         versionId: state.selectedVersionId,
       });
+      useLauncherStore.getState().fetchVersions();
     } catch (error) {
       console.error(error);
+      alert(`Launch error: ${error}`);
       setIsLaunching(false);
     }
   };
@@ -80,7 +99,8 @@ export const LaunchButton = () => {
                 className="flex w-full flex-col items-center gap-1"
               >
                 <span className="text-sm font-normal">
-                  {t(`launch.${launchStatus}`)} {Math.round(launchProgress)}%
+                  {t(`launch.${launchStatus}`)} {Math.round(launchProgress)}%{" "}
+                  {launchDetail ? `(${launchDetail})` : ""}
                 </span>
                 <Progress
                   value={launchProgress}
@@ -89,15 +109,19 @@ export const LaunchButton = () => {
               </motion.div>
             ) : (
               <motion.div
-                key="play"
+                key={isDownloaded ? "play" : "download"}
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: 10 }}
                 transition={{ duration: 0.2 }}
                 className="flex items-center"
               >
-                <Play className="mr-2 h-5 w-5 fill-current" />
-                {t("launch.play")}
+                {isDownloaded ? (
+                  <Play className="mr-2 h-5 w-5 fill-current" />
+                ) : (
+                  <Download className="mr-2 h-5 w-5" />
+                )}
+                {isDownloaded ? t("launch.play") : t("launch.download")}
               </motion.div>
             )}
           </AnimatePresence>

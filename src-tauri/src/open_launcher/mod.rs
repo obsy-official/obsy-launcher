@@ -443,6 +443,11 @@ impl Launcher {
             false,
         );
 
+        #[cfg(target_os = "macos")]
+        {
+            arg(&mut args, "-Xdock:name=Minecraft", false);
+        }
+
         if self.version.modded_profile.is_object() {
             arg(
                 &mut args,

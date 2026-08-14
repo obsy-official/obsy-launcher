@@ -90,6 +90,15 @@ pub async fn download_java_if_needed(mc_version: &str, app: &AppHandle) -> Resul
 
     if jre_dir.exists() {
         if let Some(path) = find_extracted_java(&jre_dir) {
+            #[cfg(unix)]
+            {
+                use std::os::unix::fs::PermissionsExt;
+                if let Ok(metadata) = fs::metadata(&path) {
+                    let mut perms = metadata.permissions();
+                    perms.set_mode(0o755);
+                    let _ = fs::set_permissions(&path, perms);
+                }
+            }
             return Ok(path.to_string_lossy().to_string());
         }
     }
@@ -102,6 +111,7 @@ pub async fn download_java_if_needed(mc_version: &str, app: &AppHandle) -> Resul
     struct LaunchProgressPayload {
         status: String,
         progress: f32,
+        detail: Option<String>,
     }
 
     let _ = app.emit(
@@ -109,6 +119,7 @@ pub async fn download_java_if_needed(mc_version: &str, app: &AppHandle) -> Resul
         LaunchProgressPayload {
             status: "downloading_java".to_string(),
             progress: 0.1,
+            detail: None,
         },
     );
 
@@ -164,6 +175,7 @@ pub async fn download_java_if_needed(mc_version: &str, app: &AppHandle) -> Resul
         LaunchProgressPayload {
             status: "extracting_java".to_string(),
             progress: 0.5,
+            detail: None,
         },
     );
 

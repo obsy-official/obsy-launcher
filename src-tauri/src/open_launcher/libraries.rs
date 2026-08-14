@@ -142,24 +142,45 @@ pub(crate) async fn download_libs(
     progress: &mut events::Progress,
     progress_sender: broadcast::Sender<events::Progress>,
 ) -> Result<events::Progress, Box<dyn Error + Send + Sync>> {
+    let client = reqwest::Client::new();
+    let semaphore = std::sync::Arc::new(tokio::sync::Semaphore::new(50));
+    let mut tasks = vec![];
+    let current_progress = std::sync::Arc::new(std::sync::atomic::AtomicU64::new(progress.current));
+    let total_progress = progress.total;
+
     for library in libs {
-        let name = library["name"].as_str().unwrap();
-        let url = library["url"].as_str().unwrap();
-        let hash = library["hash"].as_str().unwrap();
-        let path = Path::new(library["path"].as_str().unwrap());
+        let name = library["name"].as_str().unwrap().to_string();
+        let url = library["url"].as_str().unwrap().to_string();
+        let hash = library["hash"].as_str().unwrap().to_string();
+        let path = Path::new(library["path"].as_str().unwrap()).to_path_buf();
 
-        fs::create_dir_all(path.parent().unwrap()).await?;
-        try_download_file(url, path, hash, 3).await?;
+        let client = client.clone();
+        let semaphore = semaphore.clone();
+        let progress_sender = progress_sender.clone();
+        let current_progress = current_progress.clone();
 
-        *progress = events::Progress {
-            task: "downloading_libraries".to_string(),
-            file: name.to_string(),
-            total: progress.total,
-            current: progress.current + 1,
-        };
-        let _ = progress_sender.send(progress.clone());
+        tasks.push(tokio::spawn(async move {
+            let _permit = semaphore.acquire().await.unwrap();
+            fs::create_dir_all(path.parent().unwrap()).await?;
+            try_download_file(&client, &url, &path, &hash, 3).await?;
+
+            let current = current_progress.fetch_add(1, std::sync::atomic::Ordering::SeqCst) + 1;
+            let _ = progress_sender.send(events::Progress {
+                task: "downloading_libraries".to_string(),
+                file: name.to_string(),
+                total: total_progress,
+                current,
+            });
+
+            Ok::<(), Box<dyn Error + Send + Sync>>(())
+        }));
     }
 
+    for task in tasks {
+        task.await.unwrap()?;
+    }
+
+    progress.current = current_progress.load(std::sync::atomic::Ordering::SeqCst);
     Ok(progress.clone())
 }
 
@@ -269,6 +290,8 @@ pub(crate) async fn extract_natives(
         serde_json::Map::new()
     };
 
+    let client = reqwest::Client::new();
+
     for library in natives {
         let name = library["name"].as_str().unwrap();
         let url = library["url"].as_str().unwrap();
@@ -276,7 +299,7 @@ pub(crate) async fn extract_natives(
         let path = Path::new(library["path"].as_str().unwrap());
 
         fs::create_dir_all(path.parent().unwrap()).await?;
-        try_download_file(url, path, hash, 3).await?;
+        try_download_file(&client, url, path, hash, 3).await?;
 
         let extracted = extract_all(&path, &natives_dir).await?;
 

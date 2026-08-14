@@ -36,16 +36,29 @@
     "version": {
       "selectVersion": "Выберите версию",
       "noVersions": "Нет доступных версий",
-      "openFolder": "Открыть папку сборки"
+      "openFolder": "Открыть папку сборки",
+      "deleteInstance": "Удалить сборку",
+      "confirmDelete": "Вы уверены, что хотите удалить эту сборку? Это действие нельзя отменить.",
+      "cancel": "Отмена",
+      "delete": "Удалить",
+      "searchVersion": "Поиск версии..."
     },
     "launch": {
       "play": "Играть",
+      "download": "Скачать",
       "starting": "Подготовка...",
       "downloading_java": "Загрузка Java...",
       "extracting_java": "Распаковка Java...",
       "downloading_libs": "Загрузка библиотек...",
+      "downloading_libraries": "Загрузка библиотек...",
       "downloading_assets": "Загрузка ресурсов...",
+      "checking_assets": "Проверка ресурсов...",
       "checking_natives": "Проверка библиотек...",
+      "checking_libraries": "Проверка библиотек...",
+      "extracting_natives": "Распаковка библиотек...",
+      "installing_version": "Установка версии...",
+      "installing_assets": "Установка ресурсов...",
+      "installing_libraries": "Установка библиотек...",
       "launching": "Запуск Minecraft...",
       "success": "Успешно!"
     },
