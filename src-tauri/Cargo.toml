@@ -1,6 +1,6 @@
 [package]
 name = "obsy-launcher"
-version = "0.1.1"
+version = "0.1.2"
 description = "Obsy Launcher - A modern cross-platform Minecraft launcher"
 authors = ["m1handr"]
 edition = "2021"
