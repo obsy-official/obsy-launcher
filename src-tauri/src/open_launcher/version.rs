@@ -215,11 +215,17 @@ impl Launcher {
             .join(&self.version.id)
             .join(&format!("{}.json", self.version.id));
 
+        let client = super::utils::get_http_client();
+
         if !version_json_path.exists() {
             let version_manifest_url =
-                format!("https://piston-meta.mojang.com/mc/game/version_manifest_v2.json");
-            let version_manifest: serde_json::Value =
-                reqwest::get(&version_manifest_url).await?.json().await?;
+                "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json";
+            let version_manifest: serde_json::Value = client
+                .get(version_manifest_url)
+                .send()
+                .await?
+                .json()
+                .await?;
             let version_url = version_manifest["versions"]
                 .as_array()
                 .unwrap()
@@ -228,7 +234,8 @@ impl Launcher {
                 .unwrap()["url"]
                 .as_str()
                 .unwrap();
-            let version_json: serde_json::Value = reqwest::get(version_url).await?.json().await?;
+            let version_json: serde_json::Value =
+                client.get(version_url).send().await?.json().await?;
             let version_json_str = serde_json::to_string(&version_json)?;
             fs::write(&version_json_path, version_json_str).await?;
 
@@ -248,7 +255,7 @@ impl Launcher {
                 .as_str()
                 .unwrap()
                 .to_string();
-            let version_jar = reqwest::get(&version_jar_url).await?.bytes().await?;
+            let version_jar = client.get(&version_jar_url).send().await?.bytes().await?;
             fs::write(&version_jar_path, version_jar).await?;
         }
 
@@ -256,6 +263,7 @@ impl Launcher {
     }
 
     async fn install_modded_versions(&mut self) -> Result<(), Box<dyn Error + Send + Sync>> {
+        let client = super::utils::get_http_client();
         if self.version.forge.enabled || self.version.neoforge.enabled {
             let forge_installer_path = if self.version.forge.enabled {
                 self.version
@@ -276,11 +284,11 @@ impl Launcher {
                 )
             } else {
                 format!(
-            "https://maven.neoforged.net/releases/net/neoforged/neoforge/{}/{}-installer.jar",
-            self.version.loader_version, self.version.neoforge.combined
-        )
+                    "https://maven.neoforged.net/releases/net/neoforged/neoforge/{}/{}-installer.jar",
+                    self.version.loader_version, self.version.neoforge.combined
+                )
             };
-            let forge_installer = reqwest::get(&forge_installer_url).await?;
+            let forge_installer = client.get(&forge_installer_url).send().await?;
 
             if !forge_installer.status().is_success() {
                 fs::remove_dir_all(self.game_dir.join("versions").join(&self.version.id)).await?;
@@ -393,7 +401,9 @@ impl Launcher {
                     self.version.id, self.version.loader_version
                 )
             };
-            let profile_json: serde_json::Value = reqwest::get(&profile_url).await?.json().await?;
+            let client = super::utils::get_http_client();
+            let profile_json: serde_json::Value =
+                client.get(&profile_url).send().await?.json().await?;
 
             if self.version.fabric.enabled {
                 fs::create_dir_all(&self.version.fabric.version_path).await?;

@@ -3,7 +3,6 @@ use serde_json::Value;
 use sha1::Digest;
 use std::error::Error;
 use tokio::fs;
-use tokio::io::AsyncWriteExt;
 use tokio_util::compat::TokioAsyncWriteCompatExt;
 
 #[derive(Debug)]
@@ -23,6 +22,20 @@ impl From<LauncherError> for Box<dyn Error + Send> {
     }
 }
 
+use std::sync::OnceLock;
+
+pub(crate) fn get_http_client() -> &'static reqwest::Client {
+    static CLIENT: OnceLock<reqwest::Client> = OnceLock::new();
+    CLIENT.get_or_init(|| {
+        reqwest::Client::builder()
+            .tcp_nodelay(true)
+            .pool_idle_timeout(std::time::Duration::from_secs(90))
+            .pool_max_idle_per_host(50)
+            .build()
+            .unwrap_or_else(|_| reqwest::Client::new())
+    })
+}
+
 #[async_recursion]
 pub(crate) async fn try_download_file(
     client: &reqwest::Client,
@@ -37,28 +50,21 @@ pub(crate) async fn try_download_file(
     let response = client.get(url).send().await?;
     let data = response.bytes().await?;
 
-    let mut file = fs::File::create(path).await?;
-    file.write_all(&data).await?;
-    file.sync_all().await?;
-    file.flush().await?;
-
-    if hash.len() != 40 {
-        return Ok(());
-    }
-
-    let downloaded_hash = format!("{:x}", sha1::Sha1::digest(&fs::read(path).await?));
-
-    if downloaded_hash != hash {
-        if retries > 0 {
-            fs::remove_file(path).await?;
-            try_download_file(client, url, path, hash, retries - 1).await?;
-        } else {
-            return Err(Box::from(LauncherError(format!(
-                "Failed to download file: {}",
-                path.display()
-            ))));
+    if hash.len() == 40 {
+        let downloaded_hash = format!("{:x}", sha1::Sha1::digest(&data));
+        if downloaded_hash != hash {
+            if retries > 0 {
+                return try_download_file(client, url, path, hash, retries - 1).await;
+            } else {
+                return Err(Box::from(LauncherError(format!(
+                    "Failed to download file (hash mismatch): {}",
+                    path.display()
+                ))));
+            }
         }
     }
+
+    fs::write(path, &data).await?;
 
     Ok(())
 }

@@ -52,6 +52,10 @@ interface LauncherStore {
   profiles: Profile[];
   versions: MinecraftVersion[];
   wardrobe: WardrobeSkin[];
+  startupTimeMs: number | null;
+  appMemoryMb: number | null;
+  fetchStartupTime: () => Promise<void>;
+  fetchAppMemory: () => Promise<void>;
   fetchState: () => Promise<void>;
   updateState: (newState: LauncherState) => Promise<void>;
   fetchProfiles: () => Promise<void>;
@@ -80,6 +84,26 @@ export const useLauncherStore = create<LauncherStore>((set, get) => ({
   profiles: [],
   versions: [],
   wardrobe: [],
+  startupTimeMs: null,
+  appMemoryMb: null,
+  fetchStartupTime: async () => {
+    try {
+      const ms = await invoke<number>("get_startup_time");
+      set({ startupTimeMs: ms });
+    } catch {
+      set({ startupTimeMs: Math.round(performance.now()) });
+    }
+  },
+  fetchAppMemory: async () => {
+    try {
+      const mb = await invoke<number>("get_app_memory_usage");
+      if (mb > 0) {
+        set({ appMemoryMb: mb });
+      }
+    } catch {
+      // Ignore
+    }
+  },
   fetchState: async () => {
     try {
       const state = await invoke<LauncherState>("get_launcher_state");

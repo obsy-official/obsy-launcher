@@ -10,7 +10,100 @@ use crate::minecraft::models::MinecraftVersion;
 use crate::state::LauncherState;
 use crate::wardrobe::WardrobeStore;
 use std::sync::Mutex;
+use std::sync::OnceLock;
+use std::time::Instant;
 use tauri::{AppHandle, Emitter, Manager, State};
+
+#[global_allocator]
+static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
+
+static START_TIME: OnceLock<Instant> = OnceLock::new();
+
+pub fn init_start_time() {
+    START_TIME.get_or_init(Instant::now);
+}
+
+#[tauri::command]
+fn get_startup_time() -> u64 {
+    START_TIME
+        .get()
+        .map(|t| t.elapsed().as_millis() as u64)
+        .unwrap_or(0)
+}
+
+#[repr(C)]
+#[derive(Default)]
+struct TaskVmInfo {
+    virtual_size: u64,
+    region_count: u32,
+    page_size: u32,
+    resident_size: u64,
+    resident_size_peak: u64,
+    device: u64,
+    device_peak: u64,
+    internal: u64,
+    internal_peak: u64,
+    external: u64,
+    external_peak: u64,
+    reusable: u64,
+    reusable_peak: u64,
+    purgeable_volatile_pmap: u64,
+    purgeable_volatile_resident: u64,
+    purgeable_volatile_virtual: u64,
+    compressed: u64,
+    compressed_peak: u64,
+    compressed_lifetime: u64,
+    phys_footprint: u64,
+}
+
+#[tauri::command]
+fn get_app_memory_usage() -> u64 {
+    #[cfg(target_os = "macos")]
+    {
+        use std::mem::MaybeUninit;
+        const TASK_VM_INFO: libc::c_uint = 22;
+        const TASK_VM_INFO_COUNT: libc::mach_msg_type_number_t = (std::mem::size_of::<TaskVmInfo>()
+            / std::mem::size_of::<libc::natural_t>())
+            as libc::mach_msg_type_number_t;
+
+        let mut info = MaybeUninit::<TaskVmInfo>::uninit();
+        let mut count = TASK_VM_INFO_COUNT;
+
+        #[allow(deprecated)]
+        let kret = unsafe {
+            libc::task_info(
+                libc::mach_task_self(),
+                TASK_VM_INFO,
+                info.as_mut_ptr() as libc::task_info_t,
+                &mut count,
+            )
+        };
+
+        if kret == libc::KERN_SUCCESS {
+            let vm_info = unsafe { info.assume_init() };
+            return vm_info.phys_footprint / 1024 / 1024;
+        }
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    {
+        if let Ok(pid) = sysinfo::get_current_pid() {
+            let mut sys = sysinfo::System::new();
+            if sys.refresh_processes_specifics(
+                sysinfo::ProcessesToUpdate::Some(&[pid]),
+                true,
+                sysinfo::ProcessRefreshKind::nothing().with_memory(),
+            ) > 0
+            {
+                if let Some(process) = sys.process(pid) {
+                    return process.memory() / 1024 / 1024;
+                }
+            }
+        }
+    }
+
+    0
+}
 
 pub struct AppState {
     pub launcher_state: Mutex<LauncherState>,
@@ -233,6 +326,18 @@ async fn launch_game(
 
     launcher.jvm_arg(&format!("-Xmx{}M", launcher_state.memory_amount));
 
+    // Modern Aikar's G1GC flags to eliminate lag spikes and optimize chunk generation
+    launcher.jvm_arg("-XX:+UseG1GC");
+    launcher.jvm_arg("-XX:+ParallelRefProcEnabled");
+    launcher.jvm_arg("-XX:MaxGCPauseMillis=200");
+    launcher.jvm_arg("-XX:+UnlockExperimentalVMOptions");
+    launcher.jvm_arg("-XX:+DisableExplicitGC");
+    launcher.jvm_arg("-XX:+AlwaysPreTouch");
+    launcher.jvm_arg("-XX:G1NewSizePercent=30");
+    launcher.jvm_arg("-XX:G1MaxNewSizePercent=40");
+    launcher.jvm_arg("-XX:G1ReservePercent=20");
+    launcher.jvm_arg("-XX:G1HeapRegionSize=8M");
+
     if !launcher_state.jvm_arguments.is_empty() {
         for arg in launcher_state.jvm_arguments.split_whitespace() {
             launcher.jvm_arg(arg);
@@ -243,6 +348,11 @@ async fn launch_game(
     let app_clone = app.clone();
 
     tokio::spawn(async move {
+        let mut last_emit = std::time::Instant::now()
+            .checked_sub(std::time::Duration::from_millis(200))
+            .unwrap_or_else(std::time::Instant::now);
+        let mut last_status = String::new();
+
         while let Ok(prog) = progress.recv().await {
             let percentage = if prog.total > 0 {
                 prog.current as f32 / prog.total as f32
@@ -259,24 +369,35 @@ async fn launch_game(
 
             let global_percentage = base + scale * percentage;
 
-            let detail = if prog.task == "downloading_assets" {
-                let current_mb = prog.current as f32 / 1_048_576.0;
-                let total_mb = prog.total as f32 / 1_048_576.0;
-                Some(format!("{:.1}/{:.1} MB", current_mb, total_mb))
-            } else if prog.task == "downloading_libraries" || prog.task == "extracting_natives" {
-                Some(format!("{}/{}", prog.current, prog.total))
-            } else {
-                None
-            };
+            let now = std::time::Instant::now();
+            let is_finished = prog.total > 0 && prog.current >= prog.total;
+            let status_changed = prog.task != last_status;
+            let elapsed_ms = now.duration_since(last_emit).as_millis();
 
-            let _ = app_clone.emit(
-                "launch-progress",
-                LaunchProgressPayload {
-                    status: prog.task.clone(),
-                    progress: global_percentage,
-                    detail,
-                },
-            );
+            if is_finished || status_changed || elapsed_ms >= 50 {
+                last_emit = now;
+                last_status = prog.task.clone();
+
+                let detail = if prog.task == "downloading_assets" {
+                    let current_mb = prog.current as f32 / 1_048_576.0;
+                    let total_mb = prog.total as f32 / 1_048_576.0;
+                    Some(format!("{:.1}/{:.1} MB", current_mb, total_mb))
+                } else if prog.task == "downloading_libraries" || prog.task == "extracting_natives"
+                {
+                    Some(format!("{}/{}", prog.current, prog.total))
+                } else {
+                    None
+                };
+
+                let _ = app_clone.emit(
+                    "launch-progress",
+                    LaunchProgressPayload {
+                        status: prog.task,
+                        progress: global_percentage,
+                        detail,
+                    },
+                );
+            }
         }
     });
 
@@ -331,7 +452,6 @@ async fn launch_game(
 
     let mut command = launcher.command().map_err(|e| e.to_string())?;
 
-    // Debug: print the full command
     println!("[LAUNCH] {:?}", command);
 
     command.stdout(std::process::Stdio::piped());
@@ -367,7 +487,6 @@ async fn launch_game(
         });
     }
 
-    let app_clone_2 = app.clone();
     let _ = app.emit(
         "launch-progress",
         LaunchProgressPayload {
@@ -377,26 +496,34 @@ async fn launch_game(
         },
     );
 
-    if launcher_state.close_after_launch {
-        if let Some(window) = app.get_webview_window("main") {
-            // macOS BUG: Hiding the parent window before Java AWT creates its window
-            // can cause the Java window to be completely invisible/backgrounded!
-            // let _ = window.hide();
+    let app_clone_wait = app.clone();
+    let close_after_launch = launcher_state.close_after_launch;
 
-            std::thread::spawn(move || {
-                let _ = child.wait();
-                let _ = window.show();
-                let _ = app_clone_2.emit(
-                    "launch-progress",
-                    LaunchProgressPayload {
-                        status: "success".to_string(),
-                        progress: 1.0,
-                        detail: None,
-                    },
-                );
-            });
+    std::thread::spawn(move || {
+        if close_after_launch {
+            std::thread::sleep(std::time::Duration::from_millis(4000));
+            if let Some(window) = app_clone_wait.get_webview_window("main") {
+                let _ = window.hide();
+            }
         }
-    }
+
+        let _ = child.wait();
+
+        if let Some(window) = app_clone_wait.get_webview_window("main") {
+            let _ = window.show();
+            let _ = window.unminimize();
+            let _ = window.set_focus();
+        }
+
+        let _ = app_clone_wait.emit(
+            "launch-progress",
+            LaunchProgressPayload {
+                status: "finished".to_string(),
+                progress: 0.0,
+                detail: None,
+            },
+        );
+    });
 
     Ok(())
 }
@@ -704,8 +831,22 @@ pub fn run() {
             refresh_profile_skin,
             refresh_profile_token,
             open_version_folder,
-            delete_instance
+            delete_instance,
+            get_startup_time,
+            get_app_memory_usage
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_app_memory() {
+        let mem = get_app_memory_usage();
+        println!("\n>>> ACTUAL MEASURED MEMORY: {} MB <<<\n", mem);
+        assert!(mem > 0);
+    }
 }

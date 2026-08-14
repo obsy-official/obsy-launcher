@@ -2,11 +2,53 @@ use super::models::{MinecraftVersion, MojangManifest};
 use std::path::PathBuf;
 
 pub async fn get_mojang_versions() -> Result<Vec<MinecraftVersion>, String> {
-    let response = reqwest::get("https://piston-meta.mojang.com/mc/game/version_manifest_v2.json")
+    let cache_path = get_minecraft_dir().join("version_manifest.json");
+
+    if cache_path.exists() {
+        if let Ok(data) = std::fs::read(&cache_path) {
+            if let Ok(m) = serde_json::from_slice::<MojangManifest>(&data) {
+                let bg_cache_path = cache_path.clone();
+                tokio::spawn(async move {
+                    let client = crate::open_launcher::utils::get_http_client();
+                    if let Ok(response) = client
+                        .get("https://piston-meta.mojang.com/mc/game/version_manifest_v2.json")
+                        .timeout(std::time::Duration::from_secs(5))
+                        .send()
+                        .await
+                    {
+                        if let Ok(manifest_bytes) = response.bytes().await {
+                            let _ = std::fs::write(&bg_cache_path, &manifest_bytes);
+                        }
+                    }
+                });
+
+                return Ok(m
+                    .versions
+                    .into_iter()
+                    .map(|v| MinecraftVersion {
+                        id: v.id,
+                        r#type: v.r#type,
+                        is_local: false,
+                        release_time: Some(v.release_time),
+                    })
+                    .collect());
+            }
+        }
+    }
+
+    let client = crate::open_launcher::utils::get_http_client();
+    let response = client
+        .get("https://piston-meta.mojang.com/mc/game/version_manifest_v2.json")
+        .timeout(std::time::Duration::from_secs(4))
+        .send()
         .await
         .map_err(|e| e.to_string())?;
 
-    let manifest: MojangManifest = response.json().await.map_err(|e| e.to_string())?;
+    let manifest_bytes = response.bytes().await.map_err(|e| e.to_string())?;
+    let manifest: MojangManifest =
+        serde_json::from_slice(&manifest_bytes).map_err(|e| e.to_string())?;
+
+    let _ = std::fs::write(&cache_path, &manifest_bytes);
 
     let versions = manifest
         .versions

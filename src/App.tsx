@@ -1,14 +1,13 @@
 import { relaunch } from "@tauri-apps/plugin-process";
 import { check } from "@tauri-apps/plugin-updater";
 import { Loader2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, lazy, Suspense } from "react";
 import { useTranslation } from "react-i18next";
 import { listen } from "@tauri-apps/api/event";
 import { Header } from "./components/launcher/Header";
 import { addGameLog } from "./lib/logger";
 import { LaunchButton } from "./components/launcher/LaunchButton";
 import { ProfileSelector } from "./components/launcher/ProfileSelector";
-import { SkinViewer } from "./components/launcher/SkinViewer";
 import { SkinWardrobe } from "./components/launcher/SkinWardrobe";
 import { VersionSelector } from "./components/launcher/VersionSelector";
 import { Onboarding } from "./components/launcher/Onboarding";
@@ -22,6 +21,12 @@ import {
   m,
 } from "framer-motion";
 
+const SkinViewer = lazy(() =>
+  import("./components/launcher/SkinViewer").then((m) => ({
+    default: m.SkinViewer,
+  })),
+);
+
 const App = () => {
   const {
     state,
@@ -29,6 +34,8 @@ const App = () => {
     fetchState,
     fetchProfiles,
     fetchVersions,
+    fetchStartupTime,
+    fetchAppMemory,
     refreshProfileSkin,
     refreshProfileToken,
   } = useLauncherStore();
@@ -51,7 +58,6 @@ const App = () => {
           );
           let downloaded = 0;
           let contentLength = 0;
-
           await update.downloadAndInstall((event) => {
             if (!isMounted) return;
             switch (event.event) {
@@ -85,14 +91,33 @@ const App = () => {
     };
 
     checkForAppUpdates();
+    fetchStartupTime().then(() => {
+      const ms = useLauncherStore.getState().startupTimeMs;
+      if (ms) {
+        addGameLog("info", `[Obsy] Launcher initialized in ${ms} ms`);
+      }
+    });
+    fetchAppMemory();
     fetchState();
     fetchProfiles();
     fetchVersions();
 
+    const memInterval = setInterval(() => {
+      fetchAppMemory();
+    }, 5000);
+
     return () => {
       isMounted = false;
+      clearInterval(memInterval);
     };
-  }, [fetchState, fetchProfiles, fetchVersions, t]);
+  }, [
+    fetchState,
+    fetchProfiles,
+    fetchVersions,
+    fetchStartupTime,
+    fetchAppMemory,
+    t,
+  ]);
 
   useEffect(() => {
     const unlistenLog = listen<string>("minecraft-log", (event) => {
@@ -117,7 +142,6 @@ const App = () => {
   useEffect(() => {
     if (state?.selectedProfileId) {
       setIsSkinLoading(true);
-      // Trigger background token refresh
       refreshProfileToken(state.selectedProfileId);
 
       refreshProfileSkin(state.selectedProfileId).finally(() => {
@@ -210,12 +234,20 @@ const App = () => {
                               }}
                               className="relative z-10 flex flex-1 items-center justify-center"
                             >
-                              <SkinViewer
-                                skinUrl={finalSkinUrl}
-                                slim={selectedProfile.slim}
-                                width={160}
-                                height={260}
-                              />
+                              <Suspense
+                                fallback={
+                                  <div className="flex h-[260px] w-[160px] items-center justify-center">
+                                    <Loader2 className="text-primary/40 h-6 w-6 animate-spin" />
+                                  </div>
+                                }
+                              >
+                                <SkinViewer
+                                  skinUrl={finalSkinUrl}
+                                  slim={selectedProfile.slim}
+                                  width={160}
+                                  height={260}
+                                />
+                              </Suspense>
                             </m.div>
                           ) : (
                             <m.div

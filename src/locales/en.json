@@ -70,6 +70,8 @@
       "memory": "Memory allocation (MB)",
       "autoMemory": "Automatically detect memory",
       "jvmArgs": "JVM Arguments",
+      "applyAikar": "Apply Aikar's Flags (G1GC)",
+      "aikarHint": "Aikar's Flags optimize garbage collection and eliminate lag spikes.",
       "javaPath": "Java Path",
       "closeAfterLaunch": "Close launcher after start",
       "width": "Width",
@@ -77,7 +79,8 @@
       "fullscreen": "Fullscreen mode",
       "showReleases": "Show releases",
       "showSnapshots": "Show snapshots",
-      "showOld": "Show old (Alpha/Beta)"
+      "showOld": "Show old (Alpha/Beta)",
+      "startupTime": "Startup: {{ms}} ms"
     },
     "wardrobe": {
       "title": "Skin Wardrobe",

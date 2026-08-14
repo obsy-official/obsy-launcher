@@ -84,8 +84,10 @@ impl LauncherState {
         self.scale = self.scale.max(1);
         self.memory_amount = self.memory_amount.clamp(512, 65536);
         if self.auto_memory {
-            let mut sys = sysinfo::System::new();
-            sys.refresh_memory();
+            let sys = sysinfo::System::new_with_specifics(
+                sysinfo::RefreshKind::nothing()
+                    .with_memory(sysinfo::MemoryRefreshKind::everything()),
+            );
             let total_mb = sys.total_memory() / 1024 / 1024;
             let half_ram = (total_mb / 2) as i32;
             self.memory_amount = half_ram.clamp(2048, 8192);

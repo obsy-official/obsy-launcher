@@ -6,6 +6,7 @@ import path from "path";
 const host = process.env.TAURI_DEV_HOST;
 
 export default defineConfig({
+  base: "./",
   plugins: [react(), tailwindcss()],
   resolve: {
     alias: {
@@ -35,8 +36,5 @@ export default defineConfig({
       process.env.TAURI_ENV_PLATFORM == "windows" ? "chrome105" : "safari15",
     minify: !process.env.TAURI_ENV_DEBUG ? "esbuild" : false,
     sourcemap: !!process.env.TAURI_ENV_DEBUG,
-  },
-  esbuild: {
-    drop: process.env.TAURI_ENV_DEBUG ? [] : ["console", "debugger"],
   },
 });

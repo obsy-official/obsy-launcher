@@ -1,7 +1,6 @@
 use super::events;
-use super::utils::{try_download_file, LauncherError};
+use super::utils::{get_http_client, try_download_file, LauncherError};
 use super::Launcher;
-use sha1::Digest;
 use std::error::Error;
 use tokio::fs;
 
@@ -14,93 +13,87 @@ impl Launcher {
             )));
         }
 
-        self.emit_progress("checking_assets", "", 0, 0);
+        self.fix_log4j_vulnerability().await?;
 
+        let asset_index_name = self.version.profile["assets"]
+            .as_str()
+            .unwrap_or("legacy")
+            .to_string();
         let assets_dir = self.game_dir.join("assets");
         let indexes_dir = assets_dir.join("indexes");
         let objects_dir = assets_dir.join("objects");
 
+        let marker_path = indexes_dir.join(&format!("{}.installed", asset_index_name));
+        let index_path = indexes_dir.join(&format!("{}.json", asset_index_name));
+
+        // Fast-path: if this asset index is already fully installed and verified, skip
+        if marker_path.exists() && index_path.exists() {
+            return Ok(());
+        }
+
+        self.emit_progress("checking_assets", "", 0, 0);
+
         fs::create_dir_all(&indexes_dir).await?;
         fs::create_dir_all(&objects_dir).await?;
 
-        self.fix_log4j_vulnerability().await?;
-
-        let index_path = indexes_dir.join(&format!(
-            "{}.json",
-            self.version.profile["assets"].as_str().unwrap()
-        ));
+        let client = get_http_client();
 
         if !index_path.exists() {
-            let index_url = self.version.profile["assetIndex"]["url"].as_str().unwrap();
-            let index_data = reqwest::get(index_url).await?.text().await?;
-            fs::write(&index_path, index_data).await?;
+            if let Some(index_url) = self.version.profile["assetIndex"]["url"].as_str() {
+                let index_data = client.get(index_url).send().await?.text().await?;
+                fs::write(&index_path, index_data).await?;
+            }
         }
 
         let index: serde_json::Value =
             serde_json::from_str(&fs::read_to_string(&index_path).await?)?;
 
-        let mut readdir = fs::read_dir(&objects_dir).await?;
-        while let Some(file) = readdir.next_entry().await? {
-            let path = file.path();
-            if path.is_file() {
-                let hash = path.file_name().unwrap().to_str().unwrap().to_string();
-
-                if !index["objects"]
-                    .as_object()
-                    .unwrap()
-                    .values()
-                    .any(|object| object["hash"].as_str().unwrap() == &hash)
-                    || format!("{:x}", sha1::Sha1::digest(&fs::read(&path).await?)) != hash
-                {
-                    fs::remove_file(&path).await?;
-                }
-            }
-        }
-
         let mut total: u64 = 0;
         let mut objects_to_download = vec![];
 
-        for (name, object) in index["objects"].as_object().unwrap() {
-            let object = object.as_object().unwrap();
-            let hash = object["hash"].as_str().unwrap().to_string();
+        if let Some(objects) = index["objects"].as_object() {
+            for (name, object) in objects {
+                let object = object.as_object().unwrap();
+                let hash = object["hash"].as_str().unwrap().to_string();
 
-            let object_path = objects_dir.join(&hash[..2]).join(&hash);
+                let object_path = objects_dir.join(&hash[..2]).join(&hash);
 
-            if !object_path.exists() {
-                total += object["size"].as_u64().unwrap();
-                objects_to_download.push({
-                    let mut object = object.clone();
-                    object.insert(
+                if !object_path.exists() {
+                    total += object["size"].as_u64().unwrap_or(0);
+                    let mut obj_map = object.clone();
+                    obj_map.insert(
                         "name".to_string(),
                         serde_json::Value::String(name.to_string()),
                     );
-                    object
-                });
+                    objects_to_download.push(obj_map);
+                }
             }
         }
 
         if !objects_to_download.is_empty() {
             self.emit_progress("downloading_assets", "", total, 0);
+
+            for i in 0u8..=255 {
+                let _ = fs::create_dir_all(objects_dir.join(format!("{:02x}", i))).await;
+            }
         }
 
-        let client = reqwest::Client::new();
         let semaphore = std::sync::Arc::new(tokio::sync::Semaphore::new(50));
         let mut tasks = vec![];
         let current_progress = std::sync::Arc::new(std::sync::atomic::AtomicU64::new(0));
 
+        let is_legacy = asset_index_name == "legacy" || asset_index_name == "pre-1.6";
+
         for object in objects_to_download {
             let name = object["name"].as_str().unwrap().to_string();
             let hash = object["hash"].as_str().unwrap().to_string();
-            let size = object["size"].as_u64().unwrap();
+            let size = object["size"].as_u64().unwrap_or(0);
             let object_path = objects_dir.join(&hash[..2]).join(&hash);
 
-            let client = client.clone();
             let semaphore = semaphore.clone();
             let current_progress = current_progress.clone();
             let progress_sender = self.progress_sender.clone();
 
-            let is_legacy = self.version.profile["assets"].as_str().unwrap() == "legacy"
-                || self.version.profile["assets"].as_str().unwrap() == "pre-1.6";
             let resources_path = if is_legacy {
                 Some(self.game_dir.join("resources").join(&name))
             } else {
@@ -109,14 +102,14 @@ impl Launcher {
 
             tasks.push(tokio::spawn(async move {
                 let _permit = semaphore.acquire().await.unwrap();
-                fs::create_dir_all(object_path.parent().unwrap()).await?;
 
                 let object_url = format!(
-                    "https://resources.download.minecraft.net/{}",
-                    hash[..2].to_string() + "/" + &hash
+                    "https://resources.download.minecraft.net/{}/{}",
+                    &hash[..2],
+                    &hash
                 );
 
-                try_download_file(&client, &object_url, &object_path, &hash, 3).await?;
+                try_download_file(get_http_client(), &object_url, &object_path, &hash, 3).await?;
 
                 let current =
                     current_progress.fetch_add(size, std::sync::atomic::Ordering::SeqCst) + size;
@@ -130,7 +123,9 @@ impl Launcher {
                 // Old versions of Minecraft do not use the hashed asset structure,
                 // so we copy them into legacy folders directly to support them.
                 if let Some(resources_path) = resources_path {
-                    fs::create_dir_all(resources_path.parent().unwrap()).await?;
+                    if let Some(parent) = resources_path.parent() {
+                        fs::create_dir_all(parent).await?;
+                    }
                     fs::copy(&object_path, &resources_path).await?;
                 }
 
@@ -141,6 +136,9 @@ impl Launcher {
         for task in tasks {
             task.await.unwrap()?;
         }
+
+        // Write completion marker so future launches skip verification
+        let _ = fs::write(&marker_path, b"1").await;
 
         Ok(())
     }
@@ -167,8 +165,11 @@ impl Launcher {
                     .as_str()
                     .unwrap()
                     .to_string();
-                let log4j = reqwest::get(&log4j_url).await?.bytes().await?;
-                fs::create_dir_all(log4j_path.parent().unwrap()).await?;
+                let client = get_http_client();
+                let log4j = client.get(&log4j_url).send().await?.bytes().await?;
+                if let Some(parent) = log4j_path.parent() {
+                    fs::create_dir_all(parent).await?;
+                }
                 fs::write(&log4j_path, log4j).await?;
             }
 

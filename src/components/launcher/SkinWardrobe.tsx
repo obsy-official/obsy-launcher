@@ -13,11 +13,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useLauncherStore } from "@/state";
-import { Check, Plus, Trash2 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { Check, Plus, Trash2, Loader2 } from "lucide-react";
+import { useEffect, useRef, useState, lazy, Suspense } from "react";
 import { useTranslation } from "react-i18next";
-import { SkinViewer } from "./SkinViewer";
 import { m, AnimatePresence } from "framer-motion";
+
+const SkinViewer = lazy(() =>
+  import("./SkinViewer").then((m) => ({ default: m.SkinViewer })),
+);
 
 export const SkinWardrobe = () => {
   const {
@@ -228,12 +231,20 @@ export const SkinWardrobe = () => {
                     </Button>
                   </m.div>
                   <div className="flex w-full flex-1 items-center justify-center pt-4">
-                    <SkinViewer
-                      skinUrl={selectedSkin.base64Data}
-                      slim={selectedSkin.slim}
-                      width={180}
-                      height={300}
-                    />
+                    <Suspense
+                      fallback={
+                        <div className="flex h-[300px] w-[180px] items-center justify-center">
+                          <Loader2 className="text-primary/40 h-6 w-6 animate-spin" />
+                        </div>
+                      }
+                    >
+                      <SkinViewer
+                        skinUrl={selectedSkin.base64Data}
+                        slim={selectedSkin.slim}
+                        width={180}
+                        height={300}
+                      />
+                    </Suspense>
                   </div>
                   <div className="w-full truncate text-center text-sm font-medium">
                     {selectedSkin.name}

@@ -70,6 +70,8 @@
       "memory": "Выделение памяти (MB)",
       "autoMemory": "Автоматически определять память",
       "jvmArgs": "Аргументы JVM",
+      "applyAikar": "Применить Aikar's Flags (G1GC)",
+      "aikarHint": "Флаги Aikar's Flags оптимизируют сборщик мусора и устраняют микрофризы.",
       "javaPath": "Путь к Java",
       "closeAfterLaunch": "Закрывать лаунчер после запуска",
       "width": "Ширина",
@@ -77,7 +79,8 @@
       "fullscreen": "Полноэкранный режим",
       "showReleases": "Показывать релизы",
       "showSnapshots": "Показывать снапшоты",
-      "showOld": "Показывать старые (Alpha/Beta)"
+      "showOld": "Показывать старые (Alpha/Beta)",
+      "startupTime": "Запуск: {{ms}} мс"
     },
     "wardrobe": {
       "title": "Гардероб Скинов",

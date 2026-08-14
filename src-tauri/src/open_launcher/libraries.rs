@@ -3,7 +3,6 @@ use super::utils::{extract_all, try_download_file};
 use super::Launcher;
 use super::{events, forge};
 use serde_json::Value;
-use sha1::Digest;
 use std::error::Error;
 use std::path::Path;
 use tokio::fs;
@@ -142,7 +141,6 @@ pub(crate) async fn download_libs(
     progress: &mut events::Progress,
     progress_sender: broadcast::Sender<events::Progress>,
 ) -> Result<events::Progress, Box<dyn Error + Send + Sync>> {
-    let client = reqwest::Client::new();
     let semaphore = std::sync::Arc::new(tokio::sync::Semaphore::new(50));
     let mut tasks = vec![];
     let current_progress = std::sync::Arc::new(std::sync::atomic::AtomicU64::new(progress.current));
@@ -154,15 +152,16 @@ pub(crate) async fn download_libs(
         let hash = library["hash"].as_str().unwrap().to_string();
         let path = Path::new(library["path"].as_str().unwrap()).to_path_buf();
 
-        let client = client.clone();
         let semaphore = semaphore.clone();
         let progress_sender = progress_sender.clone();
         let current_progress = current_progress.clone();
 
         tasks.push(tokio::spawn(async move {
             let _permit = semaphore.acquire().await.unwrap();
-            fs::create_dir_all(path.parent().unwrap()).await?;
-            try_download_file(&client, &url, &path, &hash, 3).await?;
+            if let Some(parent) = path.parent() {
+                fs::create_dir_all(parent).await?;
+            }
+            try_download_file(super::utils::get_http_client(), &url, &path, &hash, 3).await?;
 
             let current = current_progress.fetch_add(1, std::sync::atomic::Ordering::SeqCst) + 1;
             let _ = progress_sender.send(events::Progress {
@@ -228,35 +227,27 @@ pub(crate) async fn sort_natives(
 
         let natives_json = natives_dir.join("natives.json");
         if natives_json.exists() {
-            let mut ok = true;
+            let mut all_exist = true;
 
-            let natives_json_content = fs::read_to_string(natives_json).await.unwrap();
-            let natives_json_content: serde_json::Value =
-                serde_json::from_str(&natives_json_content).expect("Failed to parse natives.json");
+            if let Ok(content) = fs::read_to_string(&natives_json).await {
+                if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&content) {
+                    if let Some(extracted) = parsed[name].as_array() {
+                        for native in extracted {
+                            if let Some(native_path_str) = native["path"].as_str() {
+                                if !Path::new(native_path_str).exists() {
+                                    all_exist = false;
+                                    break;
+                                }
+                            } else {
+                                all_exist = false;
+                                break;
+                            }
+                        }
 
-            if natives_json_content[name].is_array() {
-                let extracted = natives_json_content[name].as_array().unwrap();
-                for native in extracted {
-                    let native: &serde_json::Map<String, Value> = native.as_object().unwrap();
-                    if native["hash"].as_str().unwrap()
-                        != format!(
-                            "{:x}",
-                            sha1::Sha1::digest(
-                                &fs::read(native["path"].as_str().unwrap_or_else(|| ""))
-                                    .await
-                                    .unwrap()
-                            )
-                        )
-                    {
-                        ok = false;
-                        fs::remove_file(Path::new(native["path"].as_str().unwrap()))
-                            .await
-                            .unwrap();
+                        if all_exist && !extracted.is_empty() {
+                            continue;
+                        }
                     }
-                }
-
-                if ok {
-                    continue;
                 }
             }
         }
@@ -290,7 +281,7 @@ pub(crate) async fn extract_natives(
         serde_json::Map::new()
     };
 
-    let client = reqwest::Client::new();
+    let client = super::utils::get_http_client();
 
     for library in natives {
         let name = library["name"].as_str().unwrap();
@@ -298,12 +289,14 @@ pub(crate) async fn extract_natives(
         let hash = library["hash"].as_str().unwrap();
         let path = Path::new(library["path"].as_str().unwrap());
 
-        fs::create_dir_all(path.parent().unwrap()).await?;
+        if let Some(parent) = path.parent() {
+            fs::create_dir_all(parent).await?;
+        }
         try_download_file(&client, url, path, hash, 3).await?;
 
         let extracted = extract_all(&path, &natives_dir).await?;
 
-        fs::remove_file(path).await?;
+        let _ = fs::remove_file(path).await;
 
         // Minecraft uses a natives.json file to track native libraries for the JVM,
         // so we must register our extracted native libraries there.

@@ -12,11 +12,12 @@ import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useLauncherStore } from "@/state";
-import { Settings } from "lucide-react";
+import { Settings, Zap, Cpu } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 export const SettingsDialog = () => {
-  const { state, updateState, fetchVersions } = useLauncherStore();
+  const { state, updateState, fetchVersions, startupTimeMs, appMemoryMb } =
+    useLauncherStore();
   const { t } = useTranslation();
 
   if (!state) return null;
@@ -85,7 +86,22 @@ export const SettingsDialog = () => {
             </div>
 
             <div className="flex flex-col gap-2">
-              <Label>{t("settings.jvmArgs")}</Label>
+              <div className="flex items-center justify-between">
+                <Label>{t("settings.jvmArgs")}</Label>
+                <button
+                  type="button"
+                  onClick={() =>
+                    updateState({
+                      ...state,
+                      jvmArguments:
+                        "-XX:+UseG1GC -XX:+ParallelRefProcEnabled -XX:MaxGCPauseMillis=200 -XX:+UnlockExperimentalVMOptions -XX:+DisableExplicitGC -XX:+AlwaysPreTouch -XX:G1NewSizePercent=30 -XX:G1MaxNewSizePercent=40 -XX:G1ReservePercent=20 -XX:G1HeapRegionSize=8M",
+                    })
+                  }
+                  className="text-primary cursor-pointer text-xs hover:underline"
+                >
+                  {t("settings.applyAikar")}
+                </button>
+              </div>
               <Input
                 value={state.jvmArguments}
                 onChange={(e) =>
@@ -94,8 +110,11 @@ export const SettingsDialog = () => {
                     jvmArguments: e.target.value,
                   })
                 }
-                placeholder="-Xmx4G -XX:+UseG1GC"
+                placeholder="-XX:+UseG1GC -XX:+ParallelRefProcEnabled ..."
               />
+              <p className="text-muted-foreground text-[11px]">
+                {t("settings.aikarHint")}
+              </p>
             </div>
 
             <div className="flex flex-col gap-2">
@@ -227,6 +246,26 @@ export const SettingsDialog = () => {
             </div>
           </TabsContent>
         </Tabs>
+
+        {(startupTimeMs !== null || appMemoryMb !== null) && (
+          <div className="border-border/40 text-muted-foreground flex items-center justify-between border-t pt-3 font-mono text-[11px]">
+            <span>Obsy Launcher v0.1.6</span>
+            <div className="flex items-center gap-3">
+              {startupTimeMs !== null && (
+                <span className="flex items-center gap-1 text-emerald-400">
+                  <Zap className="h-3 w-3" />
+                  {t("settings.startupTime", { ms: startupTimeMs })}
+                </span>
+              )}
+              {appMemoryMb !== null && (
+                <span className="flex items-center gap-1 text-sky-400">
+                  <Cpu className="h-3 w-3" />
+                  RAM: {appMemoryMb} MB
+                </span>
+              )}
+            </div>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );
