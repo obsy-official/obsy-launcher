@@ -40,7 +40,7 @@
   },
   "plugins": {
     "updater": {
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEM2MDFFNkFGOEVCRUM0OEYKUldTUHhMNk9yK1lCeGo3aFlFaXBIakl0a3ozUGZ6MGhZMk9ZWTFOYzJzdUduVklHZzNseHM4Q0UK",
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDgyOTk2NjY4NzY1QzM3NjkKUldScE4xeDJhR2FaZ3B1SUo4Z2x5OHY4NmVyc0tHN3I2cHRzd0M1STkxY2RyVmxSUEpHYStzUmMK",
       "endpoints": [
         "https://github.com/obsy-official/obsy-launcher/releases/latest/download/latest.json"
       ]
