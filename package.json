@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "tauri": "tauri",
     "format": "prettier --write . && cd src-tauri && cargo fmt",
-    "prepare": "husky"
+    "prepare": "husky",
+    "doctor": "npx react-doctor@latest"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",

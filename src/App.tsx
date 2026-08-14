@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { listen } from "@tauri-apps/api/event";
 import { Header } from "./components/launcher/Header";
-import { addGameLog } from "./components/launcher/ConsoleDialog";
+import { addGameLog } from "./lib/logger";
 import { LaunchButton } from "./components/launcher/LaunchButton";
 import { ProfileSelector } from "./components/launcher/ProfileSelector";
 import { SkinViewer } from "./components/launcher/SkinViewer";
@@ -14,7 +14,13 @@ import { VersionSelector } from "./components/launcher/VersionSelector";
 import { Onboarding } from "./components/launcher/Onboarding";
 import "./i18n";
 import { useLauncherStore } from "./state";
-import { motion, AnimatePresence } from "framer-motion";
+import {
+  AnimatePresence,
+  LazyMotion,
+  MotionConfig,
+  domAnimation,
+  m,
+} from "framer-motion";
 
 const App = () => {
   const {
@@ -34,10 +40,12 @@ const App = () => {
   });
 
   useEffect(() => {
+    let isMounted = true;
+
     const checkForAppUpdates = async () => {
       try {
         const update = await check();
-        if (update) {
+        if (update && isMounted) {
           setUpdateStatus(
             t("updater.downloading", { version: update.version }),
           );
@@ -45,6 +53,7 @@ const App = () => {
           let contentLength = 0;
 
           await update.downloadAndInstall((event) => {
+            if (!isMounted) return;
             switch (event.event) {
               case "Started":
                 contentLength = event.data.contentLength || 0;
@@ -66,7 +75,9 @@ const App = () => {
             }
           });
 
-          await relaunch();
+          if (isMounted) {
+            await relaunch();
+          }
         }
       } catch (error) {
         console.error("Failed to check for updates", error);
@@ -77,7 +88,11 @@ const App = () => {
     fetchState();
     fetchProfiles();
     fetchVersions();
-  }, [fetchState, fetchProfiles, fetchVersions]);
+
+    return () => {
+      isMounted = false;
+    };
+  }, [fetchState, fetchProfiles, fetchVersions, t]);
 
   useEffect(() => {
     const unlistenLog = listen<string>("minecraft-log", (event) => {
@@ -117,108 +132,116 @@ const App = () => {
   const finalSkinUrl = selectedProfile?.skinPng;
 
   return (
-    <div className="bg-background text-foreground flex h-screen w-screen flex-col overflow-hidden font-sans">
-      {showOnboarding && (
-        <Onboarding
-          onComplete={() => {
-            localStorage.setItem("hasCompletedOnboarding", "true");
-            setShowOnboarding(false);
-          }}
-        />
-      )}
-      <Header />
-      <main className="relative z-10 flex flex-1 flex-col items-center justify-center p-4">
-        <AnimatePresence>
-          {state && (
-            <motion.div
-              initial={{ opacity: 0, y: 20, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              transition={{ duration: 0.5, type: "spring", bounce: 0.3 }}
-              className="flex max-w-full flex-row items-stretch gap-6"
-            >
-              <div className="bg-card border-border/50 relative flex w-96 max-w-full flex-col gap-6 overflow-hidden rounded-xl border p-6 shadow-2xl backdrop-blur-md">
-                <div className="from-primary/5 pointer-events-none absolute inset-0 bg-gradient-to-br to-transparent" />
-                {updateStatus && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="text-accent relative z-10 animate-pulse text-center text-sm font-medium"
-                  >
-                    {updateStatus}
-                  </motion.div>
-                )}
-                <div className="relative z-10 flex h-full flex-col gap-6">
-                  <ProfileSelector />
-                  <VersionSelector />
-                  <LaunchButton />
-                </div>
-              </div>
-
-              <AnimatePresence>
-                {selectedProfile && (
-                  <motion.div
-                    initial={{ opacity: 0, x: -20, scale: 0.9 }}
-                    animate={{ opacity: 1, x: 0, scale: 1 }}
-                    exit={{ opacity: 0, x: -20, scale: 0.9 }}
-                    transition={{ duration: 0.4, type: "spring", bounce: 0.3 }}
-                    className="bg-card border-border/50 relative hidden w-64 flex-col items-center justify-between overflow-hidden rounded-xl border p-6 shadow-2xl backdrop-blur-md md:flex"
-                  >
-                    <div className="from-primary/5 pointer-events-none absolute inset-0 bg-gradient-to-bl to-transparent" />
-
-                    <AnimatePresence mode="wait">
-                      {isSkinLoading ? (
-                        <motion.div
-                          key="loading"
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          exit={{ opacity: 0 }}
-                          className="relative z-10 flex w-full flex-1 items-center justify-center"
-                        >
-                          <Loader2 className="text-primary h-8 w-8 animate-spin" />
-                        </motion.div>
-                      ) : finalSkinUrl ? (
-                        <motion.div
-                          key="skin"
-                          initial={{ opacity: 0, scale: 0.8 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          exit={{ opacity: 0, scale: 0.8 }}
-                          transition={{
-                            type: "spring",
-                            stiffness: 300,
-                            damping: 20,
-                          }}
-                          className="relative z-10 flex flex-1 items-center justify-center"
-                        >
-                          <SkinViewer
-                            skinUrl={finalSkinUrl}
-                            slim={selectedProfile.slim}
-                            width={160}
-                            height={260}
-                          />
-                        </motion.div>
-                      ) : (
-                        <motion.div
-                          key="error"
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          exit={{ opacity: 0 }}
-                          className="text-muted-foreground relative z-10 flex w-full flex-1 items-center justify-center text-center text-sm"
-                        >
-                          {t("app.skinNotFound")}
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                    <div className="relative z-10 mt-4 w-full">
-                      <SkinWardrobe />
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </motion.div>
+    <LazyMotion features={domAnimation}>
+      <MotionConfig reducedMotion="user">
+        <div className="bg-background text-foreground flex h-screen w-screen flex-col overflow-hidden font-sans">
+          {showOnboarding && (
+            <Onboarding
+              onComplete={() => {
+                localStorage.setItem("hasCompletedOnboarding", "true");
+                setShowOnboarding(false);
+              }}
+            />
           )}
-        </AnimatePresence>
-      </main>
-    </div>
+          <Header />
+          <main className="relative z-10 flex flex-1 flex-col items-center justify-center p-4">
+            <AnimatePresence>
+              {state && (
+                <m.div
+                  initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  transition={{ duration: 0.5, type: "spring", bounce: 0.3 }}
+                  className="flex max-w-full flex-row items-stretch gap-6"
+                >
+                  <div className="bg-card border-border/50 relative flex w-96 max-w-full flex-col gap-6 overflow-hidden rounded-xl border p-6 shadow-2xl backdrop-blur-md">
+                    <div className="from-primary/5 pointer-events-none absolute inset-0 bg-gradient-to-br to-transparent" />
+                    {updateStatus && (
+                      <m.div
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="text-accent relative z-10 animate-pulse text-center text-sm font-medium"
+                      >
+                        {updateStatus}
+                      </m.div>
+                    )}
+                    <div className="relative z-10 flex h-full flex-col gap-6">
+                      <ProfileSelector />
+                      <VersionSelector />
+                      <LaunchButton />
+                    </div>
+                  </div>
+
+                  <AnimatePresence>
+                    {selectedProfile && (
+                      <m.div
+                        initial={{ opacity: 0, x: -20, scale: 0.9 }}
+                        animate={{ opacity: 1, x: 0, scale: 1 }}
+                        exit={{ opacity: 0, x: -20, scale: 0.9 }}
+                        transition={{
+                          duration: 0.4,
+                          type: "spring",
+                          bounce: 0.3,
+                        }}
+                        className="bg-card border-border/50 relative hidden w-64 flex-col items-center justify-between overflow-hidden rounded-xl border p-6 shadow-2xl backdrop-blur-md md:flex"
+                      >
+                        <div className="from-primary/5 pointer-events-none absolute inset-0 bg-gradient-to-bl to-transparent" />
+
+                        <AnimatePresence mode="wait">
+                          {isSkinLoading ? (
+                            <m.div
+                              key="loading"
+                              initial={{ opacity: 0 }}
+                              animate={{ opacity: 1 }}
+                              exit={{ opacity: 0 }}
+                              className="relative z-10 flex w-full flex-1 items-center justify-center"
+                            >
+                              <Loader2 className="text-primary h-8 w-8 animate-spin" />
+                            </m.div>
+                          ) : finalSkinUrl ? (
+                            <m.div
+                              key="skin"
+                              initial={{ opacity: 0, scale: 0.8 }}
+                              animate={{ opacity: 1, scale: 1 }}
+                              exit={{ opacity: 0, scale: 0.8 }}
+                              transition={{
+                                type: "spring",
+                                stiffness: 300,
+                                damping: 20,
+                              }}
+                              className="relative z-10 flex flex-1 items-center justify-center"
+                            >
+                              <SkinViewer
+                                skinUrl={finalSkinUrl}
+                                slim={selectedProfile.slim}
+                                width={160}
+                                height={260}
+                              />
+                            </m.div>
+                          ) : (
+                            <m.div
+                              key="error"
+                              initial={{ opacity: 0 }}
+                              animate={{ opacity: 1 }}
+                              exit={{ opacity: 0 }}
+                              className="text-muted-foreground relative z-10 flex w-full flex-1 items-center justify-center text-center text-sm"
+                            >
+                              {t("app.skinNotFound")}
+                            </m.div>
+                          )}
+                        </AnimatePresence>
+                        <div className="relative z-10 mt-4 w-full">
+                          <SkinWardrobe />
+                        </div>
+                      </m.div>
+                    )}
+                  </AnimatePresence>
+                </m.div>
+              )}
+            </AnimatePresence>
+          </main>
+        </div>
+      </MotionConfig>
+    </LazyMotion>
   );
 };
 

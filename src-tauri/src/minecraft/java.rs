@@ -21,41 +21,14 @@ pub fn get_required_java_version(mc_version: &str) -> u32 {
         }
     }
 
-    let mut target_version = mc_version;
-
-    if let Some(idx) = mc_version.rfind("1.") {
-        target_version = &mc_version[idx..];
+    let (_major, minor, patch) = crate::open_launcher::utils::parse_mc_version(mc_version);
+    if minor > 20 || (minor == 20 && patch >= 5) {
+        21
+    } else if minor >= 17 {
+        17
+    } else {
+        8
     }
-
-    let parts: Vec<&str> = target_version.split('.').collect();
-    if parts.len() >= 2 {
-        let minor_str = parts[1]
-            .chars()
-            .take_while(|c| c.is_ascii_digit())
-            .collect::<String>();
-        if let Ok(minor) = minor_str.parse::<u32>() {
-            if minor >= 20 {
-                if minor == 20 && parts.len() >= 3 {
-                    let patch_str = parts[2]
-                        .chars()
-                        .take_while(|c| c.is_ascii_digit())
-                        .collect::<String>();
-                    if let Ok(patch) = patch_str.parse::<u32>() {
-                        if patch >= 5 {
-                            return 21;
-                        }
-                    }
-                    return 17;
-                }
-                if minor > 20 {
-                    return 21;
-                }
-            } else if minor >= 17 {
-                return 17;
-            }
-        }
-    }
-    8
 }
 
 pub async fn download_java_if_needed(mc_version: &str, app: &AppHandle) -> Result<String, String> {

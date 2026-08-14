@@ -75,7 +75,7 @@ export const SettingsDialog = () => {
                 max={16384}
                 min={512}
                 step={512}
-                onValueChange={(val: any) =>
+                onValueChange={(val: number | readonly number[]) =>
                   updateState({
                     ...state,
                     memoryAmount: Array.isArray(val) ? val[0] : val,

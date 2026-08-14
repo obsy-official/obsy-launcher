@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { useLauncherStore } from "@/state";
-import { AnimatePresence, motion, type Variants } from "framer-motion";
+import { AnimatePresence, m, type Variants } from "framer-motion";
 import {
   CheckCircle2,
   ChevronRight,
@@ -9,11 +9,22 @@ import {
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { playStartupSound } from "@/lib/audio";
 import { ProfileSelector } from "./ProfileSelector";
 
 interface OnboardingProps {
   onComplete: () => void;
 }
+
+const containerVariants: Variants = {
+  hidden: { opacity: 0, scale: 0.95 },
+  visible: {
+    opacity: 1,
+    scale: 1,
+    transition: { duration: 0.5, type: "spring", bounce: 0.3 },
+  },
+  exit: { opacity: 0, scale: 1.05, transition: { duration: 0.3 } },
+};
 
 export const Onboarding = ({ onComplete }: OnboardingProps) => {
   const { t } = useTranslation();
@@ -21,69 +32,16 @@ export const Onboarding = ({ onComplete }: OnboardingProps) => {
   const { profiles } = useLauncherStore();
 
   useEffect(() => {
-    const playStartupSound = () => {
-      try {
-        const AudioContext =
-          window.AudioContext || (window as any).webkitAudioContext;
-        if (!AudioContext) return;
-        const ctx = new AudioContext();
-
-        const playNote = (
-          freq: number,
-          startTime: number,
-          duration: number,
-          volume: number = 0.08,
-        ) => {
-          const osc = ctx.createOscillator();
-          const gain = ctx.createGain();
-
-          osc.type = "sine";
-          osc.frequency.setValueAtTime(freq, ctx.currentTime + startTime);
-
-          gain.gain.setValueAtTime(0, ctx.currentTime + startTime);
-          gain.gain.linearRampToValueAtTime(
-            volume,
-            ctx.currentTime + startTime + 1.0,
-          );
-          gain.gain.setTargetAtTime(0, ctx.currentTime + startTime + 1.0, 1.5);
-
-          osc.connect(gain);
-          gain.connect(ctx.destination);
-
-          osc.start(ctx.currentTime + startTime);
-          osc.stop(ctx.currentTime + startTime + duration);
-        };
-
-        const baseVol = 0.08;
-        playNote(261.63, 0, 6.0, baseVol); // C4 (Base)
-        playNote(392.0, 0.2, 6.0, baseVol * 0.8); // G4
-        playNote(493.88, 0.4, 6.0, baseVol * 0.7); // B4
-        playNote(587.33, 0.6, 6.0, baseVol * 0.6); // D5
-        playNote(783.99, 0.8, 6.0, baseVol * 0.4); // G5 (Shimmer)
-      } catch (e) {
-        console.error("Audio play failed", e);
-      }
-    };
-
     playStartupSound();
   }, []);
-  const handleNext = () => setStep((s) => s + 1);
 
-  const containerVariants: Variants = {
-    hidden: { opacity: 0, scale: 0.95 },
-    visible: {
-      opacity: 1,
-      scale: 1,
-      transition: { duration: 0.5, type: "spring", bounce: 0.3 },
-    },
-    exit: { opacity: 0, scale: 1.05, transition: { duration: 0.3 } },
-  };
+  const handleNext = () => setStep((s) => s + 1);
 
   return (
     <div className="bg-background fixed inset-0 z-50 flex items-center justify-center">
       <AnimatePresence mode="wait">
         {step === 0 && (
-          <motion.div
+          <m.div
             key="step0"
             variants={containerVariants}
             initial="hidden"
@@ -110,11 +68,11 @@ export const Onboarding = ({ onComplete }: OnboardingProps) => {
               {t("onboarding.getStarted")}
               <ChevronRight className="ml-2 h-4 w-4" />
             </Button>
-          </motion.div>
+          </m.div>
         )}
 
         {step === 1 && (
-          <motion.div
+          <m.div
             key="step1"
             variants={containerVariants}
             initial="hidden"
@@ -145,11 +103,11 @@ export const Onboarding = ({ onComplete }: OnboardingProps) => {
               {t("onboarding.continue")}
               <ChevronRight className="ml-2 h-4 w-4" />
             </Button>
-          </motion.div>
+          </m.div>
         )}
 
         {step === 2 && (
-          <motion.div
+          <m.div
             key="step2"
             variants={containerVariants}
             initial="hidden"
@@ -175,7 +133,7 @@ export const Onboarding = ({ onComplete }: OnboardingProps) => {
             >
               {t("onboarding.finish")}
             </Button>
-          </motion.div>
+          </m.div>
         )}
       </AnimatePresence>
     </div>

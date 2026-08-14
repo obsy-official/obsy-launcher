@@ -151,13 +151,8 @@ impl Launcher {
         if self.version.profile["logging"].is_object()
             && self.version.profile["logging"]["client"].is_object()
         {
-            if (self.version.id.split('.').collect::<Vec<&str>>()[1] == "18"
-                && self.version.id.split('.').collect::<Vec<&str>>().len() == 3)
-                || self.version.id.split('.').collect::<Vec<&str>>()[1]
-                    .parse::<u32>()
-                    .unwrap()
-                    > 18
-            {
+            let (_major, minor, patch) = super::utils::parse_mc_version(&self.version.id);
+            if (minor == 18 && patch > 0) || minor > 18 {
                 return Ok(());
             }
 
@@ -183,10 +178,7 @@ impl Launcher {
                 .replace("${path}", log4j_path.to_str().unwrap());
             self.args.push(log4j_arg);
 
-            if self.version.id.split('.').collect::<Vec<&str>>()[1] == "18"
-                && self.version.id.split('.').collect::<Vec<&str>>().len() == 2
-                || self.version.id.split('.').collect::<Vec<&str>>()[1] == "17"
-            {
+            if (minor == 18 && patch == 0) || minor == 17 {
                 self.args
                     .push("-Dlog4j2.formatMsgNoLookups=true".to_string());
             }

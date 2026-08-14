@@ -57,7 +57,7 @@ export const Header = () => {
           <Select value={state.language} onValueChange={handleLanguageChange}>
             <SelectTrigger className="w-[130px]">
               <SelectValue>
-                {(val: any) => (
+                {(val: Language | null) => (
                   <div className="flex items-center gap-2">
                     <Globe className="text-muted-foreground h-4 w-4 shrink-0" />
                     <span>{val === "RUSSIAN" ? "Русский" : "English"}</span>

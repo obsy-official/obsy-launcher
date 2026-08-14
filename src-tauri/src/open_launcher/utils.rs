@@ -72,6 +72,42 @@ pub(crate) fn get_os() -> String {
     }
 }
 
+pub(crate) fn parse_mc_version(id: &str) -> (u32, u32, u32) {
+    let mut target = id;
+    if let Some(idx) = id.rfind("1.") {
+        target = &id[idx..];
+    }
+
+    let parts: Vec<&str> = target.split('.').collect();
+    if parts.len() >= 2 {
+        let major = parts[0]
+            .chars()
+            .filter(|c| c.is_ascii_digit())
+            .collect::<String>()
+            .parse::<u32>()
+            .unwrap_or(1);
+        let minor = parts[1]
+            .chars()
+            .take_while(|c| c.is_ascii_digit())
+            .collect::<String>()
+            .parse::<u32>()
+            .unwrap_or(0);
+        let patch = if parts.len() >= 3 {
+            parts[2]
+                .chars()
+                .take_while(|c| c.is_ascii_digit())
+                .collect::<String>()
+                .parse::<u32>()
+                .unwrap_or(0)
+        } else {
+            0
+        };
+        (major, minor, patch)
+    } else {
+        (1, 0, 0)
+    }
+}
+
 pub(crate) async fn extract_file(
     zip_path: &std::path::Path,
     file_name: &str,
@@ -84,21 +120,23 @@ pub(crate) async fn extract_file(
     let archive = async_zip::tokio::read::fs::ZipFileReader::new(zip_path).await?;
 
     for i in 0..archive.file().entries().len() {
-        if archive
+        let entry_name = archive
             .file()
             .entries()
             .get(i)
             .unwrap()
             .filename()
-            .as_str()?
-            == file_name
-        {
+            .as_str()?;
+
+        if entry_name == file_name {
             if archive.file().entries().get(i).unwrap().dir()? {
                 fs::create_dir_all(extract_path).await?;
             } else {
                 let mut reader = archive.reader_without_entry(i).await?;
-                if !extract_path.parent().unwrap().exists() {
-                    fs::create_dir_all(extract_path.parent().unwrap()).await?;
+                if let Some(parent) = extract_path.parent() {
+                    if !parent.exists() {
+                        fs::create_dir_all(parent).await?;
+                    }
                 }
 
                 let writer = fs::OpenOptions::new()
@@ -126,7 +164,24 @@ pub(crate) async fn extract_all(
 
     for i in 0..archive.file().entries().len() {
         let entry = archive.file().entries().get(i).unwrap();
-        let path = extract_path.join(entry.filename().as_str()?);
+        let raw_filename = entry.filename().as_str()?;
+
+        // Prevent Zip Slip vulnerability by sanitizing path components
+        let entry_path = std::path::Path::new(raw_filename);
+        if entry_path.is_absolute()
+            || entry_path.components().any(|c| {
+                matches!(
+                    c,
+                    std::path::Component::ParentDir
+                        | std::path::Component::RootDir
+                        | std::path::Component::Prefix(_)
+                )
+            })
+        {
+            continue;
+        }
+
+        let path = extract_path.join(entry_path);
 
         if path.exists() {
             extracted.push(serde_json::json!({
@@ -136,9 +191,9 @@ pub(crate) async fn extract_all(
             continue;
         }
 
-        if entry.filename().as_str()?.ends_with(".git")
-            || entry.filename().as_str()?.ends_with(".sha1")
-            || entry.filename().as_str()?.starts_with("META-INF")
+        if raw_filename.ends_with(".git")
+            || raw_filename.ends_with(".sha1")
+            || raw_filename.starts_with("META-INF")
         {
             continue;
         }
@@ -147,8 +202,10 @@ pub(crate) async fn extract_all(
             fs::create_dir_all(path).await?;
         } else {
             let mut reader = archive.reader_without_entry(i).await?;
-            if !path.parent().unwrap().exists() {
-                fs::create_dir_all(path.parent().unwrap()).await?;
+            if let Some(parent) = path.parent() {
+                if !parent.exists() {
+                    fs::create_dir_all(parent).await?;
+                }
             }
 
             let writer = fs::OpenOptions::new()

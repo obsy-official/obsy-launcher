@@ -18,6 +18,18 @@ pub struct AppState {
     pub wardrobe_store: WardrobeStore,
 }
 
+fn validate_safe_id(id: &str) -> Result<(), String> {
+    if id.is_empty()
+        || id.contains("..")
+        || id.contains('/')
+        || id.contains('\\')
+        || id.chars().any(|c| c.is_control())
+    {
+        return Err("Invalid identifier".to_string());
+    }
+    Ok(())
+}
+
 #[tauri::command]
 fn get_launcher_state(state: State<'_, AppState>) -> Result<LauncherState, String> {
     let state = state.launcher_state.lock().map_err(|e| e.to_string())?;
@@ -122,6 +134,7 @@ async fn get_versions(state: State<'_, AppState>) -> Result<Vec<MinecraftVersion
 
 #[tauri::command]
 fn select_version(id: String, state: State<'_, AppState>, app: AppHandle) -> Result<(), String> {
+    validate_safe_id(&id)?;
     let mut current_state = state.launcher_state.lock().map_err(|e| e.to_string())?;
     current_state.selected_version_id = Some(id);
     current_state.save(&app)?;
@@ -142,6 +155,7 @@ async fn launch_game(
     state: State<'_, AppState>,
     app: AppHandle,
 ) -> Result<(), String> {
+    validate_safe_id(&version_id)?;
     let (launcher_state, profile) = {
         let l_state = state
             .launcher_state
@@ -537,8 +551,16 @@ async fn refresh_profile_skin(
         }
     } else {
         let client = reqwest::Client::new();
+        let encoded_username = profile
+            .username
+            .chars()
+            .map(|c| match c {
+                'a'..='z' | 'A'..='Z' | '0'..='9' | '-' | '_' | '.' | '~' => c.to_string(),
+                _ => format!("%{:02X}", c as u32),
+            })
+            .collect::<String>();
         if let Ok(res) = client
-            .get(&format!("https://mc-heads.net/skin/{}", profile.username))
+            .get(&format!("https://mc-heads.net/skin/{}", encoded_username))
             .send()
             .await
         {
@@ -591,6 +613,7 @@ async fn refresh_profile_token(
 
 #[tauri::command]
 fn open_version_folder(version_id: String, app: tauri::AppHandle) -> Result<(), String> {
+    validate_safe_id(&version_id)?;
     use tauri_plugin_opener::OpenerExt;
 
     let mut mc_dir = crate::minecraft::versions::get_minecraft_dir();
@@ -615,6 +638,7 @@ fn delete_instance(
     state: State<'_, AppState>,
     app: tauri::AppHandle,
 ) -> Result<(), String> {
+    validate_safe_id(&version_id)?;
     let mc_dir = crate::minecraft::versions::get_minecraft_dir();
 
     let instance_dir = mc_dir.join("instances").join(&version_id);

@@ -158,31 +158,16 @@ impl InternalVersion {
                     .join("forge-".to_string() + &format!("{}-{}", id, loader_version.clone())),
                 install_profile: forge_install_profile_json,
                 legacy: if loader == "forge" {
-                    let minor = id.split('.').collect::<Vec<&str>>()[1]
-                        .parse::<u32>()
-                        .unwrap();
-                    let patch = id.split('.').collect::<Vec<&str>>()[2]
-                        .split('-')
-                        .collect::<Vec<&str>>()[0]
-                        .parse::<u32>()
-                        .unwrap();
+                    let (_major, minor, patch) = super::utils::parse_mc_version(&id);
                     let forge_patch = loader_version
-                        .clone()
                         .split('.')
-                        .collect::<Vec<&str>>()
-                        .get(3)
-                        .unwrap_or(&"0")
-                        .parse::<u32>()
-                        .unwrap();
+                        .filter_map(|s| s.parse::<u32>().ok())
+                        .last()
+                        .unwrap_or(0);
 
-                    if minor < 12
+                    minor < 12
                         || (minor == 12 && patch < 2)
                         || (minor == 12 && patch == 2 && forge_patch <= 2847)
-                    {
-                        true
-                    } else {
-                        false
-                    }
                 } else {
                     false
                 },

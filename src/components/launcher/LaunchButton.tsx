@@ -7,7 +7,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useLauncherStore } from "@/state";
 
-import { motion, AnimatePresence } from "framer-motion";
+import { m, AnimatePresence } from "framer-motion";
 
 export const LaunchButton = () => {
   const { state, versions } = useLauncherStore();
@@ -75,14 +75,14 @@ export const LaunchButton = () => {
 
   return (
     <div className="mt-auto flex flex-col gap-3 pt-4">
-      <motion.div
+      <m.div
         whileHover={{ scale: 1.02 }}
         whileTap={{ scale: 0.98 }}
         transition={{ type: "spring", stiffness: 400, damping: 25 }}
       >
         <Button
           size="lg"
-          className="hover:bg-primary/90 h-14 w-full text-lg font-bold uppercase shadow-md transition-all duration-300 hover:shadow-xl"
+          className="hover:bg-primary/90 h-14 w-full text-lg font-bold uppercase shadow-md transition-colors duration-300 hover:shadow-xl"
           disabled={
             !state.selectedProfileId || !state.selectedVersionId || isLaunching
           }
@@ -90,7 +90,7 @@ export const LaunchButton = () => {
         >
           <AnimatePresence mode="wait">
             {isLaunching ? (
-              <motion.div
+              <m.div
                 key="launching"
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -104,11 +104,11 @@ export const LaunchButton = () => {
                 </span>
                 <Progress
                   value={launchProgress}
-                  className="h-1.5 w-full transition-all"
+                  className="h-1.5 w-full transition-[width]"
                 />
-              </motion.div>
+              </m.div>
             ) : (
-              <motion.div
+              <m.div
                 key={isDownloaded ? "play" : "download"}
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -122,11 +122,11 @@ export const LaunchButton = () => {
                   <Download className="mr-2 h-5 w-5" />
                 )}
                 {isDownloaded ? t("launch.play") : t("launch.download")}
-              </motion.div>
+              </m.div>
             )}
           </AnimatePresence>
         </Button>
-      </motion.div>
+      </m.div>
     </div>
   );
 };

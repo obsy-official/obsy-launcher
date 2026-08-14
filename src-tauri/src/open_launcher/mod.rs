@@ -14,7 +14,7 @@ mod assets;
 mod events;
 mod forge;
 mod libraries;
-mod utils;
+pub(crate) mod utils;
 
 /// The `Launcher` struct is the main struct of the package. It is used to configure and launch a Minecraft game.
 pub struct Launcher {
@@ -530,11 +530,7 @@ impl Launcher {
         );
         fields.insert(
             "natives_directory".to_string(),
-            if self.version.id.split('.').collect::<Vec<&str>>()[1]
-                .parse::<i32>()
-                .unwrap()
-                >= 19
-            {
+            if utils::parse_mc_version(&self.version.id).1 >= 19 {
                 self.game_dir.to_str().unwrap().to_string()
             } else {
                 self.game_dir

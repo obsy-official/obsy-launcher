@@ -22,8 +22,16 @@ import { openUrl } from "@tauri-apps/plugin-opener";
 import { ExternalLink, Loader2, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { AnimatePresence, m } from "framer-motion";
+import { ProfileAvatar } from "./ProfileAvatar";
 
-import { motion, AnimatePresence } from "framer-motion";
+interface MsaDeviceCode {
+  device_code: string;
+  user_code: string;
+  verification_uri: string;
+  interval: number;
+  expires_in: number;
+}
 
 export const ProfileSelector = () => {
   const {
@@ -38,15 +46,16 @@ export const ProfileSelector = () => {
 
   const [newUsername, setNewUsername] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [msaData, setMsaData] = useState<any>(null);
+  const [msaData, setMsaData] = useState<MsaDeviceCode | null>(null);
   const [isMsaPolling, setIsMsaPolling] = useState(false);
   const [msaError, setMsaError] = useState("");
 
   if (!state) return null;
 
   const handleAddProfile = () => {
-    if (newUsername.trim()) {
-      addOfflineProfile(newUsername.trim());
+    const trimmed = newUsername.trim();
+    if (trimmed) {
+      addOfflineProfile(trimmed);
       setNewUsername("");
       setIsDialogOpen(false);
     }
@@ -56,7 +65,7 @@ export const ProfileSelector = () => {
     try {
       setMsaError("");
       setMsaData(null);
-      const data: any = await invoke("start_msa_auth");
+      const data = await invoke<MsaDeviceCode>("start_msa_auth");
       setMsaData(data);
       setIsMsaPolling(true);
 
@@ -66,14 +75,14 @@ export const ProfileSelector = () => {
       });
 
       await fetchProfiles();
-      if (newProfile && newProfile.id) {
+      if (newProfile?.id) {
         selectProfile(newProfile.id);
       }
 
       setIsDialogOpen(false);
       setMsaData(null);
-    } catch (e: any) {
-      setMsaError(e.toString());
+    } catch (e: unknown) {
+      setMsaError(e instanceof Error ? e.message : String(e));
     } finally {
       setIsMsaPolling(false);
     }
@@ -89,19 +98,15 @@ export const ProfileSelector = () => {
             if (val) selectProfile(val as string);
           }}
         >
-          <SelectTrigger className="hover:border-primary/50 focus:ring-primary/20 w-full transition-all duration-300">
+          <SelectTrigger className="hover:border-primary/50 focus:ring-primary/20 w-full transition-colors duration-300">
             <SelectValue placeholder={t("profile.selectAccount")}>
-              {(val: any) => {
+              {(val: string | null) => {
                 if (!val) return null;
                 const p = profiles.find((p) => p.id === val);
                 if (!p) return null;
                 return (
                   <div className="flex items-center gap-2 pl-1">
-                    <img
-                      src={`https://mc-heads.net/avatar/${p.username}/32`}
-                      alt={p.username}
-                      className="bg-muted h-5 w-5 rounded-xs shadow-sm"
-                    />
+                    <ProfileAvatar username={p.username} />
                     <span>
                       {p.username}{" "}
                       <span className="text-muted-foreground text-xs">
@@ -128,11 +133,7 @@ export const ProfileSelector = () => {
                   className="hover:bg-accent transition-colors"
                 >
                   <div className="flex items-center gap-2">
-                    <img
-                      src={`https://mc-heads.net/avatar/${p.username}/32`}
-                      alt={p.username}
-                      className="bg-muted h-5 w-5 rounded-xs"
-                    />
+                    <ProfileAvatar username={p.username} />
                     <span>
                       {p.username}{" "}
                       <span className="text-muted-foreground text-xs">
@@ -158,7 +159,7 @@ export const ProfileSelector = () => {
             }
           }}
         >
-          <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+          <m.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
             <DialogTrigger
               render={
                 <Button
@@ -170,17 +171,17 @@ export const ProfileSelector = () => {
             >
               <Plus className="h-4 w-4" />
             </DialogTrigger>
-          </motion.div>
+          </m.div>
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
               <DialogTitle>{t("profile.addProfileTitle")}</DialogTitle>
             </DialogHeader>
             <Tabs defaultValue="offline" className="w-full">
               <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="offline" className="transition-all">
+                <TabsTrigger value="offline" className="transition-colors">
                   {t("profile.offline")}
                 </TabsTrigger>
-                <TabsTrigger value="microsoft" className="transition-all">
+                <TabsTrigger value="microsoft" className="transition-colors">
                   {t("profile.microsoft")}
                 </TabsTrigger>
               </TabsList>
@@ -190,7 +191,7 @@ export const ProfileSelector = () => {
                   value="offline"
                   className="mt-0 flex flex-col gap-4 py-4"
                 >
-                  <motion.div
+                  <m.div
                     initial={{ opacity: 0, x: -10 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ duration: 0.2 }}
@@ -206,24 +207,24 @@ export const ProfileSelector = () => {
                         onKeyDown={(e) =>
                           e.key === "Enter" && handleAddProfile()
                         }
-                        className="hover:border-primary/50 focus-visible:ring-primary/20 transition-all"
+                        className="hover:border-primary/50 focus-visible:ring-primary/20 transition-colors"
                       />
                     </div>
                     <Button
                       onClick={handleAddProfile}
                       disabled={!newUsername.trim()}
-                      className="mt-2 transition-all"
+                      className="mt-2 transition-colors"
                     >
                       {t("profile.addOfflineProfile")}
                     </Button>
-                  </motion.div>
+                  </m.div>
                 </TabsContent>
 
                 <TabsContent
                   value="microsoft"
                   className="mt-0 flex flex-col gap-4 py-4"
                 >
-                  <motion.div
+                  <m.div
                     initial={{ opacity: 0, x: 10 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ duration: 0.2 }}
@@ -232,13 +233,13 @@ export const ProfileSelector = () => {
                     {!msaData && !isMsaPolling && (
                       <Button
                         onClick={handleMsaAuth}
-                        className="w-full transition-all"
+                        className="w-full transition-colors"
                       >
                         {t("profile.addMicrosoftProfile")}
                       </Button>
                     )}
                     {msaData && (
-                      <motion.div
+                      <m.div
                         initial={{ opacity: 0, scale: 0.95 }}
                         animate={{ opacity: 1, scale: 1 }}
                         className="flex flex-col items-center justify-center gap-4 py-4 text-center"
@@ -251,7 +252,7 @@ export const ProfileSelector = () => {
                         </div>
                         <Button
                           variant="outline"
-                          className="hover:bg-accent mt-2 w-full transition-all"
+                          className="hover:bg-accent mt-2 w-full transition-colors"
                           onClick={() => openUrl(msaData.verification_uri)}
                         >
                           <ExternalLink className="mr-2 h-4 w-4" />
@@ -261,18 +262,18 @@ export const ProfileSelector = () => {
                           <Loader2 className="text-primary h-4 w-4 animate-spin" />
                           {t("profile.microsoftLoginWaiting")}
                         </div>
-                      </motion.div>
+                      </m.div>
                     )}
                     {msaError && (
-                      <motion.div
+                      <m.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         className="text-destructive bg-destructive/10 mt-2 rounded-md p-2 text-center text-sm"
                       >
                         {t("profile.microsoftLoginError")}: {msaError}
-                      </motion.div>
+                      </m.div>
                     )}
-                  </motion.div>
+                  </m.div>
                 </TabsContent>
               </div>
             </Tabs>
@@ -281,27 +282,24 @@ export const ProfileSelector = () => {
 
         <AnimatePresence>
           {state.selectedProfileId && (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.8, width: 0 }}
-              animate={{ opacity: 1, scale: 1, width: "auto" }}
-              exit={{ opacity: 0, scale: 0.8, width: 0 }}
+            <m.div
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.8 }}
               transition={{ type: "spring", stiffness: 500, damping: 30 }}
             >
-              <motion.div
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-              >
+              <m.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
                 <Button
                   variant="destructive"
                   size="icon"
                   title={t("profile.deleteTooltip")}
                   onClick={() => removeProfile(state.selectedProfileId!)}
-                  className="hover:bg-destructive/90 transition-all hover:shadow-md"
+                  className="hover:bg-destructive/90 transition-colors hover:shadow-md"
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>
-              </motion.div>
-            </motion.div>
+              </m.div>
+            </m.div>
           )}
         </AnimatePresence>
       </div>

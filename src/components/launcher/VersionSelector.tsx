@@ -34,7 +34,7 @@ import {
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, m } from "framer-motion";
 
 export const VersionSelector = () => {
   const { state, versions, selectVersion, openVersionFolder, deleteInstance } =
@@ -56,7 +56,7 @@ export const VersionSelector = () => {
                 variant="outline"
                 role="combobox"
                 aria-expanded={open}
-                className="hover:border-primary/50 focus:ring-primary/20 flex-1 justify-between font-normal transition-all duration-300"
+                className="hover:border-primary/50 focus:ring-primary/20 flex-1 justify-between font-normal transition-colors duration-300"
               />
             }
           >
@@ -134,17 +134,14 @@ export const VersionSelector = () => {
         <AnimatePresence>
           {state.selectedVersionId &&
             versions.find((v) => v.id === state.selectedVersionId)?.isLocal && (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.8, width: 0 }}
-                animate={{ opacity: 1, scale: 1, width: "auto" }}
-                exit={{ opacity: 0, scale: 0.8, width: 0 }}
+              <m.div
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.8 }}
                 transition={{ type: "spring", stiffness: 500, damping: 30 }}
                 className="flex gap-2"
               >
-                <motion.div
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                >
+                <m.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
                   <Button
                     variant="outline"
                     size="icon"
@@ -154,7 +151,7 @@ export const VersionSelector = () => {
                   >
                     <FolderOpen className="h-4 w-4" />
                   </Button>
-                </motion.div>
+                </m.div>
                 <Dialog>
                   <DialogTrigger
                     render={
@@ -194,7 +191,7 @@ export const VersionSelector = () => {
                     </DialogFooter>
                   </DialogContent>
                 </Dialog>
-              </motion.div>
+              </m.div>
             )}
         </AnimatePresence>
       </div>

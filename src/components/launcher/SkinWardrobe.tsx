@@ -17,7 +17,7 @@ import { Check, Plus, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { SkinViewer } from "./SkinViewer";
-import { motion, AnimatePresence } from "framer-motion";
+import { m, AnimatePresence } from "framer-motion";
 
 export const SkinWardrobe = () => {
   const {
@@ -80,19 +80,19 @@ export const SkinWardrobe = () => {
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <motion.div
+      <m.div
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
         className="w-full"
       >
         <Button
           variant="outline"
-          className="hover:bg-primary/10 hover:text-primary hover:border-primary/50 mt-4 w-full transition-all duration-300"
+          className="hover:bg-primary/10 hover:text-primary hover:border-primary/50 mt-4 w-full transition-colors duration-300"
           onClick={() => setIsOpen(true)}
         >
           {t("wardrobe.changeSkin")}
         </Button>
-      </motion.div>
+      </m.div>
       <DialogContent className="sm:max-w-4xl">
         <DialogHeader>
           <DialogTitle>{t("wardrobe.title")}</DialogTitle>
@@ -124,39 +124,51 @@ export const SkinWardrobe = () => {
                   <SelectItem value="slim">{t("wardrobe.slim")}</SelectItem>
                 </SelectContent>
               </Select>
-              <motion.div
+              <m.div
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 className="flex-1"
               >
                 <Button
                   onClick={() => fileInputRef.current?.click()}
-                  className="hover:bg-secondary/80 w-full transition-all"
+                  className="hover:bg-secondary/80 w-full transition-colors"
                   variant="secondary"
                 >
                   <Plus className="mr-2 h-4 w-4" />
                   {t("wardrobe.uploadSkin")}
                 </Button>
-              </motion.div>
+              </m.div>
             </div>
 
             <div className="border-border/50 bg-muted/20 min-h-0 flex-1 overflow-y-auto rounded-md border p-2">
               <div className="grid grid-cols-3 gap-2">
                 <AnimatePresence>
-                  {wardrobe
-                    .filter(
-                      (s) => !s.profileId || s.profileId === activeProfile?.id,
-                    )
-                    .map((skin) => (
-                      <motion.div
+                  {wardrobe.reduce<React.ReactNode[]>((acc, skin) => {
+                    if (
+                      skin.profileId &&
+                      skin.profileId !== activeProfile?.id
+                    ) {
+                      return acc;
+                    }
+                    acc.push(
+                      <m.div
                         initial={{ opacity: 0, scale: 0.9 }}
                         animate={{ opacity: 1, scale: 1 }}
                         exit={{ opacity: 0, scale: 0.9 }}
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
                         key={skin.id}
-                        className={`hover:border-primary/50 relative aspect-square cursor-pointer overflow-hidden rounded-md border-2 transition-all duration-300 ${selectedSkinId === skin.id ? "border-primary shadow-primary/20 shadow-md" : "bg-muted/50 border-transparent"}`}
+                        role="button"
+                        tabIndex={0}
+                        aria-label={skin.name}
+                        className={`hover:border-primary/50 relative aspect-square cursor-pointer overflow-hidden rounded-md border-2 transition-colors duration-300 ${selectedSkinId === skin.id ? "border-primary shadow-primary/20 shadow-md" : "bg-muted/50 border-transparent"}`}
                         onClick={() => setSelectedSkinId(skin.id)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            setSelectedSkinId(skin.id);
+                          }
+                        }}
                       >
                         <img
                           src={skin.base64Data}
@@ -166,18 +178,20 @@ export const SkinWardrobe = () => {
                         />
                         <AnimatePresence>
                           {selectedSkinId === skin.id && (
-                            <motion.div
-                              initial={{ opacity: 0, scale: 0 }}
+                            <m.div
+                              initial={{ opacity: 0, scale: 0.01 }}
                               animate={{ opacity: 1, scale: 1 }}
-                              exit={{ opacity: 0, scale: 0 }}
+                              exit={{ opacity: 0, scale: 0.01 }}
                               className="bg-primary text-primary-foreground absolute top-1 right-1 rounded-full p-0.5"
                             >
                               <Check className="h-3 w-3" />
-                            </motion.div>
+                            </m.div>
                           )}
                         </AnimatePresence>
-                      </motion.div>
-                    ))}
+                      </m.div>,
+                    );
+                    return acc;
+                  }, [])}
                 </AnimatePresence>
               </div>
             </div>
@@ -186,7 +200,7 @@ export const SkinWardrobe = () => {
           <div className="border-border/50 bg-muted/10 relative flex w-1/2 flex-col items-center gap-4 rounded-md border p-4">
             <AnimatePresence mode="wait">
               {selectedSkin ? (
-                <motion.div
+                <m.div
                   key={selectedSkin.id}
                   initial={{ opacity: 0, x: 20 }}
                   animate={{ opacity: 1, x: 0 }}
@@ -194,7 +208,7 @@ export const SkinWardrobe = () => {
                   transition={{ duration: 0.2 }}
                   className="flex h-full w-full flex-col items-center justify-between"
                 >
-                  <motion.div
+                  <m.div
                     whileHover={{ scale: 1.1 }}
                     whileTap={{ scale: 0.9 }}
                     className="absolute top-2 right-2"
@@ -212,7 +226,7 @@ export const SkinWardrobe = () => {
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
-                  </motion.div>
+                  </m.div>
                   <div className="flex w-full flex-1 items-center justify-center pt-4">
                     <SkinViewer
                       skinUrl={selectedSkin.base64Data}
@@ -224,22 +238,22 @@ export const SkinWardrobe = () => {
                   <div className="w-full truncate text-center text-sm font-medium">
                     {selectedSkin.name}
                   </div>
-                  <motion.div
+                  <m.div
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                     className="mt-auto w-full"
                   >
                     <Button
                       onClick={handleApply}
-                      className="hover:bg-primary/90 w-full shadow-md transition-all hover:shadow-lg"
+                      className="hover:bg-primary/90 w-full shadow-md transition-colors hover:shadow-lg"
                       disabled={!state?.selectedProfileId}
                     >
                       {t("wardrobe.applySkin")}
                     </Button>
-                  </motion.div>
-                </motion.div>
+                  </m.div>
+                </m.div>
               ) : (
-                <motion.div
+                <m.div
                   key="empty"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
@@ -247,7 +261,7 @@ export const SkinWardrobe = () => {
                   className="text-muted-foreground flex flex-1 items-center justify-center text-center text-sm"
                 >
                   {t("wardrobe.emptyPreview")}
-                </motion.div>
+                </m.div>
               )}
             </AnimatePresence>
           </div>
