@@ -16,7 +16,7 @@ It is built with **Tauri**, **React**, **Vite**, and **Tailwind CSS**.
 
 ### 📥 Download & Install (For Users)
 
-1. Go to the [Releases](https://github.com/m1handr/obsy-launcher/releases) page.
+1. Go to the [Releases](https://github.com/obsy-official/obsy-launcher/releases) page.
 2. Download the latest version for your operating system:
    - **Windows:** `.exe` or `.msi`
    - **macOS:** `.dmg` or `.app`
@@ -38,7 +38,7 @@ Ensure you have the following installed on your system:
 ### Installation & Development
 
 ```bash
-git clone https://github.com/m1handr/obsy-launcher.git
+git clone https://github.com/obsy-official/obsy-launcher.git
 cd obsy-launcher
 npm install
 npm run tauri dev
@@ -62,7 +62,7 @@ Obsy Launcher — это современный кроссплатформенн
 
 ### 📥 Скачивание и Установка (Для игроков)
 
-1. Перейдите на страницу [Releases](https://github.com/m1handr/obsy-launcher/releases).
+1. Перейдите на страницу [Releases](https://github.com/obsy-official/obsy-launcher/releases).
 2. Скачайте последнюю версию для вашей операционной системы:
    - **Windows:** `.exe` или `.msi`
    - **macOS:** `.dmg` или `.app`
@@ -86,7 +86,7 @@ Obsy Launcher — это современный кроссплатформенн
 1. Склонируйте репозиторий:
 
    ```bash
-   git clone https://github.com/m1handr/obsy-launcher.git
+   git clone https://github.com/obsy-official/obsy-launcher.git
    cd obsy-launcher
    ```
 
