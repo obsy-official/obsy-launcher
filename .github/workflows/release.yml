@@ -56,20 +56,10 @@ jobs:
         with:
           workspaces: "./src-tauri -> target"
 
-      - name: verify secrets are set
-        env:
-          KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
-          PASS: ${{ secrets.TAURI_KEY_PASSWORD }}
-        run: |
-          if [ -z "$KEY" ]; then echo "❌ TAURI_PRIVATE_KEY is EMPTY!"; else echo "✅ TAURI_PRIVATE_KEY is loaded!"; fi
-          if [ -z "$PASS" ]; then echo "❌ TAURI_KEY_PASSWORD is EMPTY!"; else echo "✅ TAURI_KEY_PASSWORD is loaded!"; fi
-
       - name: build tauri app
-        uses: tauri-apps/tauri-action@v0
+        uses: tauri-apps/tauri-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAURI_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
-          TAURI_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
         with:
