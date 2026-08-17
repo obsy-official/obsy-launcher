@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -12,6 +13,7 @@ import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useLauncherStore } from "@/state";
+import { getVersion } from "@tauri-apps/api/app";
 import { Settings, Zap, Cpu } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
@@ -19,6 +21,13 @@ export const SettingsDialog = () => {
   const { state, updateState, fetchVersions, startupTimeMs, appMemoryMb } =
     useLauncherStore();
   const { t } = useTranslation();
+  const [appVersion, setAppVersion] = useState<string>("0.1.7");
+
+  useEffect(() => {
+    getVersion()
+      .then((ver) => setAppVersion(ver))
+      .catch(() => {});
+  }, []);
 
   if (!state) return null;
 
@@ -247,25 +256,23 @@ export const SettingsDialog = () => {
           </TabsContent>
         </Tabs>
 
-        {(startupTimeMs !== null || appMemoryMb !== null) && (
-          <div className="border-border/40 text-muted-foreground flex items-center justify-between border-t pt-3 font-mono text-[11px]">
-            <span>Obsy Launcher v0.1.6</span>
-            <div className="flex items-center gap-3">
-              {startupTimeMs !== null && (
-                <span className="flex items-center gap-1 text-emerald-400">
-                  <Zap className="h-3 w-3" />
-                  {t("settings.startupTime", { ms: startupTimeMs })}
-                </span>
-              )}
-              {appMemoryMb !== null && (
-                <span className="flex items-center gap-1 text-sky-400">
-                  <Cpu className="h-3 w-3" />
-                  RAM: {appMemoryMb} MB
-                </span>
-              )}
-            </div>
+        <div className="border-border/40 text-muted-foreground flex items-center justify-between border-t pt-3 font-mono text-[11px]">
+          <span>Obsy Launcher v{appVersion}</span>
+          <div className="flex items-center gap-3">
+            {startupTimeMs !== null && (
+              <span className="flex items-center gap-1 text-emerald-400">
+                <Zap className="h-3 w-3" />
+                {t("settings.startupTime", { ms: startupTimeMs })}
+              </span>
+            )}
+            {appMemoryMb !== null && (
+              <span className="flex items-center gap-1 text-sky-400">
+                <Cpu className="h-3 w-3" />
+                RAM: {appMemoryMb} MB
+              </span>
+            )}
           </div>
-        )}
+        </div>
       </DialogContent>
     </Dialog>
   );
