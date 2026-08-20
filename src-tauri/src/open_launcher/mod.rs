@@ -199,12 +199,16 @@ fn process_legacy_game_args(args: &mut Vec<String>, game_args: String) {
 }
 
 fn arg(args: &mut Vec<String>, arg: &str, ignore_checks: bool) {
+    let trimmed = arg.trim();
+    if trimmed.starts_with("--sun-misc-unsafe-memory-access") {
+        return;
+    }
     if ignore_checks {
-        args.push(arg.trim().to_string());
+        args.push(trimmed.to_string());
     } else {
-        for arg in arg.split(' ') {
-            if !args.clone().contains(&arg.trim().to_string()) {
-                args.push(arg.trim().to_string());
+        for a in trimmed.split(' ') {
+            if !args.contains(&a.trim().to_string()) {
+                args.push(a.trim().to_string());
             }
         }
     }

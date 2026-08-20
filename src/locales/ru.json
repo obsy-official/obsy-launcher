@@ -49,7 +49,6 @@
       "starting": "Подготовка...",
       "downloading_java": "Загрузка Java...",
       "extracting_java": "Распаковка Java...",
-      "downloading_libs": "Загрузка библиотек...",
       "downloading_libraries": "Загрузка библиотек...",
       "downloading_assets": "Загрузка ресурсов...",
       "checking_assets": "Проверка ресурсов...",
@@ -82,15 +81,6 @@
       "showOld": "Показывать старые (Alpha/Beta)",
       "startupTime": "Запуск: {{ms}} мс"
     },
-    "wardrobe": {
-      "title": "Гардероб Скинов",
-      "changeSkin": "Изменить скин",
-      "uploadSkin": "Загрузить скин",
-      "applySkin": "Применить скин",
-      "emptyPreview": "Выберите скин из гардероба, чтобы просмотреть и применить его.",
-      "classic": "Классический",
-      "slim": "Тонкий"
-    },
     "onboarding": {
       "welcome": "Добро пожаловать в Obsy Launcher",
       "description": "Погрузитесь в Minecraft с плавными анимациями, быстрой работой и красивым интерфейсом.",
@@ -101,6 +91,93 @@
       "readyTitle": "Готово к игре!",
       "readyDesc": "Всё настроено. Пора отправляться в приключение.",
       "finish": "Запустить"
+    },
+    "common": {
+      "cancel": "Отмена",
+      "close": "Закрыть",
+      "save": "Сохранить",
+      "author": "Автор",
+      "version": "Версия"
+    },
+    "addons": {
+      "title": "Аддоны",
+      "subtitle": "Модули и расширения возможностей лаунчера",
+      "search": "Поиск аддонов...",
+      "notFound": "Ничего не найдено",
+      "install": "Установить",
+      "installed": "Установлен",
+      "reinstall": "Переустановить / Обновить",
+      "installFromFile": "Установить .zip",
+      "installFromUrl": "Установить по ссылке",
+      "urlDialogTitle": "Установка аддона по ссылке",
+      "urlDialogDesc": "Введите прямую ссылку на .zip архив аддона (например, с GitHub Releases):",
+      "urlInputPlaceholder": "https://example.com/addon.zip",
+      "downloadingFromUrl": "Загрузка архива из сети...",
+      "refreshCatalog": "Обновить каталог",
+      "catalogRefreshed": "Каталог обновлен",
+      "uninstall": "Удалить аддон",
+      "settings": "Настройки аддона",
+      "settingsTitle": "Настройки:",
+      "update": "Обновить",
+      "updateAvailable": "Доступно обновление",
+      "verifiedAuthor": "Официальный проверенный разработчик",
+      "thirdPartyAuthor": "Сторонний аддон",
+      "noInstalled": "У вас пока нет установленных аддонов",
+      "noInstalledDesc": "Перейдите во вкладку Каталог, чтобы добавить новые возможности в лаунчер.",
+      "securityTitle": "Установка аддона",
+      "verified": "Верифицирован",
+      "securitySubtitle": "Проверка прав доступа и безопасности",
+      "thirdPartyWarningTitle": "Внимание: сторонний аддон",
+      "thirdPartyWarningDesc": "Устанавливайте аддоны только от доверенных авторов. Они получают доступ к разрешенным функциям лаунчера.",
+      "requestedPermissions": "Запрашиваемые разрешения:",
+      "noPermissionsRequired": "Аддон не запрашивает специальных системных разрешений.",
+      "allowAndInstall": "Разрешить и установить",
+      "installing": "Установка...",
+      "tabs": {
+        "store": "Каталог",
+        "installed": "Установленные"
+      },
+      "categories": {
+        "all": "Все",
+        "utility": "Утилиты",
+        "integration": "Интеграции",
+        "customization": "Внешний вид",
+        "performance": "Оптимизация"
+      },
+      "permissions": {
+        "gameLifecycle": {
+          "label": "Управление запуском игры",
+          "desc": "Может изменять параметры Java (JVM), аргументы запуска и перехватывать процесс"
+        },
+        "gameLaunch": {
+          "label": "Запуск игрового клиента",
+          "desc": "Может инициировать запуск Minecraft"
+        },
+        "gameProfiles": {
+          "label": "Информация об аккаунте",
+          "desc": "Доступ к имени выбранного профиля и версии"
+        },
+        "networkFetch": {
+          "label": "Сетевые запросы (Интернет)",
+          "desc": "Может загружать данные с внешних серверов и API"
+        },
+        "storageLocal": {
+          "label": "Локальное хранилище",
+          "desc": "Сохранение настроек и данных на диске"
+        },
+        "uiSlots": {
+          "label": "Интерфейс и виджеты",
+          "desc": "Встраивание кнопок и виджетов в панели лаунчера"
+        },
+        "uiNotifications": {
+          "label": "Уведомления",
+          "desc": "Показ всплывающих системных сообщений"
+        },
+        "fsInstances": {
+          "label": "Файлы игровых сборок",
+          "desc": "Чтение и запись файлов в папку сборки"
+        }
+      }
     }
   }
 }

@@ -1,0 +1,36 @@
+{
+  "id": "skin-3d-viewer",
+  "name": "3D Skin Doll & Capes Wardrobe",
+  "version": "2.0.0",
+  "description": "Интерактивная 3D-модель персонажа с анимацией, гардеробом скинов и установкой плащей.",
+  "author": "Obsy Team",
+  "category": "customization",
+  "sizeBytes": 165000,
+  "permissions": ["ui:slots", "storage:local", "game:profiles"],
+  "tags": [
+    "skin",
+    "cape",
+    "capes",
+    "3d",
+    "wardrobe",
+    "player",
+    "model",
+    "animation"
+  ],
+  "configSchema": {
+    "showWardrobeButton": {
+      "type": "boolean",
+      "label": "Кнопка «Изменить скин»",
+      "description": "Отображать кнопку открытия гардероба скинов под 3D-моделью",
+      "default": true
+    },
+    "modelWidth": {
+      "type": "number",
+      "label": "Ширина модели (px)",
+      "min": 120,
+      "max": 220,
+      "step": 10,
+      "default": 160
+    }
+  }
+}

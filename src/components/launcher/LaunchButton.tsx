@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useLauncherStore } from "@/state";
 
+import { addonRegistry } from "@/lib/addons/registry";
 import { m, AnimatePresence } from "framer-motion";
 
 export const LaunchButton = () => {
@@ -24,6 +25,7 @@ export const LaunchButton = () => {
   const isDownloaded = selectedVersion?.isLocal ?? false;
 
   useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | null = null;
     const unlisten = listen("launch-progress", (event) => {
       const payload = event.payload as {
         status: string;
@@ -32,13 +34,10 @@ export const LaunchButton = () => {
       };
       setLaunchStatus(payload.status);
       setLaunchProgress(payload.progress * 100);
-      if (payload.detail) {
-        setLaunchDetail(payload.detail);
-      } else {
-        setLaunchDetail("");
-      }
+      setLaunchDetail(payload.detail || "");
+
       if (payload.status === "success") {
-        setTimeout(() => {
+        timer = setTimeout(() => {
           setIsLaunching(false);
           setLaunchStatus("");
           setLaunchProgress(0);
@@ -48,6 +47,7 @@ export const LaunchButton = () => {
     });
 
     return () => {
+      if (timer) clearTimeout(timer);
       unlisten.then((f) => f());
     };
   }, []);
@@ -58,7 +58,28 @@ export const LaunchButton = () => {
     setLaunchStatus("starting");
     setLaunchProgress(0);
     setLaunchDetail("");
+
     try {
+      const launchContext = {
+        profileId: state.selectedProfileId,
+        versionId: state.selectedVersionId,
+        jvmArguments: state.jvmArguments
+          ? state.jvmArguments.split(" ").filter(Boolean)
+          : [],
+        environment: {},
+      };
+
+      const allowed = await addonRegistry.runBeforeLaunchHooks(launchContext);
+      if (!allowed) {
+        setIsLaunching(false);
+        return;
+      }
+
+      addonRegistry.emit("game:launching", {
+        profileId: state.selectedProfileId,
+        versionId: state.selectedVersionId,
+      });
+
       await invoke("launch_game", {
         profileId: state.selectedProfileId,
         versionId: state.selectedVersionId,

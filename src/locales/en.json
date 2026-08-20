@@ -49,7 +49,6 @@
       "starting": "Preparing...",
       "downloading_java": "Downloading Java...",
       "extracting_java": "Extracting Java...",
-      "downloading_libs": "Downloading libraries...",
       "downloading_libraries": "Downloading libraries...",
       "downloading_assets": "Downloading assets...",
       "checking_assets": "Checking assets...",
@@ -82,15 +81,6 @@
       "showOld": "Show old (Alpha/Beta)",
       "startupTime": "Startup: {{ms}} ms"
     },
-    "wardrobe": {
-      "title": "Skin Wardrobe",
-      "changeSkin": "Change Skin",
-      "uploadSkin": "Upload Skin",
-      "applySkin": "Apply Skin",
-      "emptyPreview": "Select a skin from your wardrobe to preview and apply it.",
-      "classic": "Classic",
-      "slim": "Slim"
-    },
     "onboarding": {
       "welcome": "Welcome to Obsy Launcher",
       "description": "Experience Minecraft with smooth animations, native performance, and a beautiful UI.",
@@ -101,6 +91,93 @@
       "readyTitle": "Ready to play!",
       "readyDesc": "Everything is set up. Let's dive in.",
       "finish": "Launch"
+    },
+    "common": {
+      "cancel": "Cancel",
+      "close": "Close",
+      "save": "Save",
+      "author": "Author",
+      "version": "Version"
+    },
+    "addons": {
+      "title": "Addons",
+      "subtitle": "Modular extensions to customize your launcher",
+      "search": "Search addons...",
+      "notFound": "No addons found",
+      "install": "Install",
+      "installed": "Installed",
+      "reinstall": "Reinstall / Update",
+      "installFromFile": "Install .zip",
+      "installFromUrl": "Install from URL",
+      "urlDialogTitle": "Install Addon from URL",
+      "urlDialogDesc": "Enter a direct download link to an addon .zip archive (e.g. from GitHub Releases):",
+      "urlInputPlaceholder": "https://example.com/addon.zip",
+      "downloadingFromUrl": "Downloading archive from network...",
+      "refreshCatalog": "Refresh Catalog",
+      "catalogRefreshed": "Catalog refreshed",
+      "uninstall": "Uninstall addon",
+      "settings": "Addon Settings",
+      "settingsTitle": "Settings:",
+      "update": "Update",
+      "updateAvailable": "Update available",
+      "verifiedAuthor": "Official verified developer",
+      "thirdPartyAuthor": "Third-party addon",
+      "noInstalled": "No addons installed yet",
+      "noInstalledDesc": "Explore the Store tab to add new features and integrations.",
+      "securityTitle": "Install Addon",
+      "verified": "Verified",
+      "securitySubtitle": "Security and permissions review",
+      "thirdPartyWarningTitle": "Warning: Third-party Addon",
+      "thirdPartyWarningDesc": "Only install addons from authors you trust. They receive access to enabled launcher permissions.",
+      "requestedPermissions": "Requested Permissions:",
+      "noPermissionsRequired": "This addon does not require any special permissions.",
+      "allowAndInstall": "Allow & Install",
+      "installing": "Installing...",
+      "tabs": {
+        "store": "Store",
+        "installed": "Installed"
+      },
+      "categories": {
+        "all": "All",
+        "utility": "Utilities",
+        "integration": "Integrations",
+        "customization": "Appearance",
+        "performance": "Performance"
+      },
+      "permissions": {
+        "gameLifecycle": {
+          "label": "Game Lifecycle Management",
+          "desc": "Can configure JVM arguments, launch parameters, and intercept game processes"
+        },
+        "gameLaunch": {
+          "label": "Game Launch Control",
+          "desc": "Can initiate Minecraft game launches"
+        },
+        "gameProfiles": {
+          "label": "Account Information",
+          "desc": "Access to current profile name and selected version"
+        },
+        "networkFetch": {
+          "label": "Network Access (Internet)",
+          "desc": "Can fetch data from external APIs and servers"
+        },
+        "storageLocal": {
+          "label": "Local Storage",
+          "desc": "Save settings and persistent state to disk"
+        },
+        "uiSlots": {
+          "label": "UI & Widgets",
+          "desc": "Embed custom buttons and widgets into launcher UI slots"
+        },
+        "uiNotifications": {
+          "label": "Notifications",
+          "desc": "Display system toast notifications"
+        },
+        "fsInstances": {
+          "label": "Instance Files",
+          "desc": "Read and write files directly inside instance directories"
+        }
+      }
     }
   }
 }

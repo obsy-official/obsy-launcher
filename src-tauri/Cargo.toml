@@ -1,6 +1,6 @@
 [package]
 name = "obsy-launcher"
-version = "0.1.8"
+version = "0.1.9"
 description = "Obsy Launcher - A modern cross-platform Minecraft launcher"
 authors = ["obsy-official"]
 edition = "2021"
@@ -33,6 +33,7 @@ async_zip = { version = "0.0.17", features = ["full"] }
 futures-lite = "2.3.0"
 md5 = "0.7.0"
 sha1 = "0.10.6"
+sha2 = "0.10"
 tokio-util = "0.7.10"
 tar = "0.4.46"
 flate2 = "1.1.9"

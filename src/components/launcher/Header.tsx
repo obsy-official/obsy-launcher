@@ -10,6 +10,8 @@ import { Globe, Zap, Cpu } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { SettingsDialog } from "./SettingsDialog";
 import { ConsoleDialog } from "./ConsoleDialog";
+import { AddonsDialog } from "@/components/addons/AddonsDialog";
+import { PluginSlot } from "@/components/addons/PluginSlot";
 
 export const Header = () => {
   const { state, updateState, startupTimeMs, appMemoryMb } = useLauncherStore();
@@ -71,6 +73,8 @@ export const Header = () => {
       </div>
       {state && (
         <div className="flex items-center gap-2">
+          <PluginSlot name="header.actions" className="mr-1" />
+          <AddonsDialog />
           <ConsoleDialog />
           <SettingsDialog />
 

@@ -1,0 +1,91 @@
+[
+  {
+    "id": "skin-3d-viewer",
+    "name": "3D Skin Doll & Capes Wardrobe",
+    "version": "2.0.0",
+    "description": "Интерактивная 3D-модель персонажа с анимацией, гардеробом скинов и установкой плащей.",
+    "author": "Obsy Team",
+    "category": "customization",
+    "sizeBytes": 136447,
+    "permissions": ["ui:slots", "storage:local", "game:profiles"],
+    "tags": [
+      "skin",
+      "cape",
+      "capes",
+      "3d",
+      "wardrobe",
+      "player",
+      "model",
+      "animation"
+    ],
+    "configSchema": {
+      "showWardrobeButton": {
+        "type": "boolean",
+        "label": "Кнопка «Изменить скин»",
+        "description": "Отображать кнопку открытия гардероба скинов под 3D-моделью",
+        "default": true
+      },
+      "modelWidth": {
+        "type": "number",
+        "label": "Ширина модели (px)",
+        "min": 120,
+        "max": 220,
+        "step": 10,
+        "default": 160
+      }
+    },
+    "checksum": "419746c54716210cdcb8ab34fe1e16aba40159939417c513f3d482720411477b",
+    "downloadUrl": "https://raw.githubusercontent.com/obsy-official/obsy-launcher/main/addons/dist/skin-3d-viewer.zip"
+  },
+  {
+    "id": "modrinth-browser",
+    "name": "Modrinth Explorer",
+    "version": "2.8.0",
+    "description": "Каталог модов, ресурспаков и шейдеров от Modrinth с быстрой установкой в один клик.",
+    "author": "Modrinth Fanatics",
+    "category": "utility",
+    "sizeBytes": 7119,
+    "permissions": ["fs:instances", "ui:slots", "network:fetch"],
+    "tags": ["mods", "modrinth", "shaders", "resourcepacks"],
+    "checksum": "c1fb2a3114872c55e59b37eb3db4908b3c0d992b4f103261a39cac3fb53e4ec0",
+    "downloadUrl": "https://raw.githubusercontent.com/obsy-official/obsy-launcher/main/addons/dist/modrinth-browser.zip"
+  },
+  {
+    "id": "discord-rpc",
+    "name": "Discord Rich Presence",
+    "version": "1.1.0",
+    "description": "Отображает ваш статус в Discord: версию Minecraft, выбранный профиль и время игры в лаунчере.",
+    "author": "Obsy Team",
+    "category": "integration",
+    "sizeBytes": 2857,
+    "permissions": [
+      "game:lifecycle",
+      "game:profiles",
+      "ui:slots",
+      "storage:local"
+    ],
+    "tags": ["discord", "rpc", "status", "social"],
+    "configSchema": {
+      "showProfile": {
+        "type": "boolean",
+        "label": "Показывать никнейм в статусе",
+        "description": "Отображает имя текущего профиля в Discord",
+        "default": true
+      },
+      "showVersion": {
+        "type": "boolean",
+        "label": "Показывать версию Minecraft",
+        "description": "Отображает установленную версию игры",
+        "default": true
+      },
+      "customDetails": {
+        "type": "string",
+        "label": "Кастомный статус",
+        "placeholder": "Играет в кубы",
+        "default": "Играет в Obsy Launcher"
+      }
+    },
+    "checksum": "92d75045495fee1d2f279c1fcb6d3eeedca01a881d8bdf1d1a8ab21942e3f1d5",
+    "downloadUrl": "https://raw.githubusercontent.com/obsy-official/obsy-launcher/main/addons/dist/discord-rpc.zip"
+  }
+]

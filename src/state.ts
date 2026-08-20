@@ -39,6 +39,14 @@ export interface Profile {
   slim: boolean;
 }
 
+export interface MinecraftCape {
+  id: string;
+  state: string;
+  url: string;
+  alias?: string | null;
+  base64?: string | null;
+}
+
 export interface WardrobeSkin {
   id: string;
   name: string;
@@ -77,6 +85,24 @@ interface LauncherStore {
   ) => Promise<void>;
   removeSkinFromWardrobe: (id: string) => Promise<void>;
   applySkin: (profileId: string, skinId: string) => Promise<void>;
+  getAccountCapes: (profileId: string) => Promise<MinecraftCape[]>;
+  setActiveCape: (profileId: string, capeId: string | null) => Promise<void>;
+}
+
+/**
+ * Safely invokes a Tauri backend command with centralized error logging.
+ */
+async function safeInvoke<T>(
+  cmd: string,
+  args?: Record<string, unknown>,
+  fallback?: T,
+): Promise<T | undefined> {
+  try {
+    return await invoke<T>(cmd, args);
+  } catch (error) {
+    console.error(`[Obsy State] Error in "${cmd}":`, error);
+    return fallback;
+  }
 }
 
 export const useLauncherStore = create<LauncherStore>((set, get) => ({
@@ -86,149 +112,117 @@ export const useLauncherStore = create<LauncherStore>((set, get) => ({
   wardrobe: [],
   startupTimeMs: null,
   appMemoryMb: null,
+
   fetchStartupTime: async () => {
-    try {
-      const ms = await invoke<number>("get_startup_time");
-      set({ startupTimeMs: ms });
-    } catch {
-      set({ startupTimeMs: Math.round(performance.now()) });
-    }
+    const ms = await safeInvoke<number>(
+      "get_startup_time",
+      undefined,
+      Math.round(performance.now()),
+    );
+    if (ms !== undefined) set({ startupTimeMs: ms });
   },
+
   fetchAppMemory: async () => {
-    try {
-      const mb = await invoke<number>("get_app_memory_usage");
-      if (mb > 0) {
-        set({ appMemoryMb: mb });
-      }
-    } catch {
-      // Ignore
-    }
+    const mb = await safeInvoke<number>("get_app_memory_usage", undefined, 0);
+    if (mb && mb > 0) set({ appMemoryMb: mb });
   },
+
   fetchState: async () => {
-    try {
-      const state = await invoke<LauncherState>("get_launcher_state");
-      set({ state });
-    } catch (error) {
-      console.error("Failed to fetch launcher state:", error);
-    }
+    const state = await safeInvoke<LauncherState>("get_launcher_state");
+    if (state) set({ state });
   },
+
   updateState: async (newState) => {
-    try {
-      set({ state: newState });
-      await invoke("update_launcher_state", { newState });
-    } catch (error) {
-      console.error("Failed to update launcher state:", error);
-    }
+    set({ state: newState });
+    await safeInvoke("update_launcher_state", { newState });
   },
+
   fetchProfiles: async () => {
-    try {
-      const profiles = await invoke<Profile[]>("get_profiles");
-      set({ profiles });
-    } catch (error) {
-      console.error("Failed to fetch profiles:", error);
-    }
+    const profiles = await safeInvoke<Profile[]>("get_profiles", undefined, []);
+    if (profiles) set({ profiles });
   },
+
   addOfflineProfile: async (username: string) => {
-    try {
-      const profiles = await invoke<Profile[]>("add_offline_profile", {
-        username,
-      });
+    const profiles = await safeInvoke<Profile[]>("add_offline_profile", {
+      username,
+    });
+    if (profiles) {
       set({ profiles });
       const newProfile = profiles.find((p) => p.username === username);
       if (newProfile) {
         await get().selectProfile(newProfile.id);
       }
-    } catch (error) {
-      console.error("Failed to add profile:", error);
     }
   },
+
   selectProfile: async (id: string) => {
-    try {
-      await invoke("select_profile", { id });
-      const currentState = get().state;
-      if (currentState) {
-        set({ state: { ...currentState, selectedProfileId: id } });
-      }
-    } catch (error) {
-      console.error("Failed to select profile:", error);
+    await safeInvoke("select_profile", { id });
+    const currentState = get().state;
+    if (currentState) {
+      set({ state: { ...currentState, selectedProfileId: id } });
     }
   },
+
   removeProfile: async (id: string) => {
-    try {
-      const profiles = await invoke<Profile[]>("remove_profile", { id });
+    const profiles = await safeInvoke<Profile[]>("remove_profile", { id });
+    if (profiles) {
       set({ profiles });
       const currentState = get().state;
       if (currentState?.selectedProfileId === id) {
         set({ state: { ...currentState, selectedProfileId: null } });
       }
-    } catch (error) {
-      console.error("Failed to remove profile:", error);
     }
   },
+
   fetchVersions: async () => {
-    try {
-      const versions = await invoke<MinecraftVersion[]>("get_versions");
-      set({ versions });
-    } catch (error) {
-      console.error("Failed to fetch versions:", error);
-    }
+    const versions = await safeInvoke<MinecraftVersion[]>(
+      "get_versions",
+      undefined,
+      [],
+    );
+    if (versions) set({ versions });
   },
+
   selectVersion: async (id: string) => {
-    try {
-      await invoke("select_version", { id });
-      const currentState = get().state;
-      if (currentState) {
-        set({ state: { ...currentState, selectedVersionId: id } });
-      }
-    } catch (error) {
-      console.error("Failed to select version:", error);
+    await safeInvoke("select_version", { id });
+    const currentState = get().state;
+    if (currentState) {
+      set({ state: { ...currentState, selectedVersionId: id } });
     }
   },
+
   openVersionFolder: async (versionId: string) => {
-    try {
-      await invoke("open_version_folder", { versionId });
-    } catch (error) {
-      console.error("Failed to open version folder:", error);
-    }
+    await safeInvoke("open_version_folder", { versionId });
   },
+
   deleteInstance: async (versionId: string) => {
-    try {
-      await invoke("delete_instance", { versionId });
-      await get().fetchVersions();
-      const currentState = get().state;
-      if (currentState?.selectedVersionId === versionId) {
-        set({ state: { ...currentState, selectedVersionId: null } });
-      }
-    } catch (error) {
-      console.error("Failed to delete instance:", error);
+    await safeInvoke("delete_instance", { versionId });
+    await get().fetchVersions();
+    const currentState = get().state;
+    if (currentState?.selectedVersionId === versionId) {
+      set({ state: { ...currentState, selectedVersionId: null } });
     }
   },
+
   fetchWardrobe: async () => {
-    try {
-      const wardrobe = await invoke<WardrobeSkin[]>("get_wardrobe");
-      set({ wardrobe });
-    } catch (error) {
-      console.error("Failed to fetch wardrobe:", error);
-    }
+    const wardrobe = await safeInvoke<WardrobeSkin[]>(
+      "get_wardrobe",
+      undefined,
+      [],
+    );
+    if (wardrobe) set({ wardrobe });
   },
+
   refreshProfileSkin: async (profileId: string) => {
-    try {
-      await invoke("refresh_profile_skin", { profileId });
-      await get().fetchProfiles();
-    } catch (error) {
-      console.error("Failed to refresh profile skin:", error);
-    }
+    await safeInvoke("refresh_profile_skin", { profileId });
+    await get().fetchProfiles();
   },
+
   refreshProfileToken: async (profileId: string) => {
-    try {
-      await invoke("refresh_profile_token", { profileId });
-      // We don't need to fetch profiles again immediately,
-      // but we do it just in case token state is exposed in UI someday.
-      await get().fetchProfiles();
-    } catch (error) {
-      console.error("Failed to refresh profile token:", error);
-    }
+    await safeInvoke("refresh_profile_token", { profileId });
+    await get().fetchProfiles();
   },
+
   addSkinToWardrobe: async (
     fileBytes: number[],
     name: string,
@@ -244,24 +238,40 @@ export const useLauncherStore = create<LauncherStore>((set, get) => ({
       });
       await get().fetchWardrobe();
     } catch (error) {
-      console.error("Failed to add skin to wardrobe:", error);
+      console.error("[Obsy State] Failed to add skin to wardrobe:", error);
       throw error;
     }
   },
+
   removeSkinFromWardrobe: async (id: string) => {
-    try {
-      await invoke("remove_skin_from_wardrobe", { id });
-      await get().fetchWardrobe();
-    } catch (error) {
-      console.error("Failed to remove skin from wardrobe:", error);
-    }
+    await safeInvoke("remove_skin_from_wardrobe", { id });
+    await get().fetchWardrobe();
   },
+
   applySkin: async (profileId: string, skinId: string) => {
     try {
       await invoke("apply_skin", { profileId, skinId });
-      await get().fetchProfiles(); // Refresh profiles to get the updated skin
+      await get().fetchProfiles();
     } catch (error) {
-      console.error("Failed to apply skin:", error);
+      console.error("[Obsy State] Failed to apply skin:", error);
+      throw error;
+    }
+  },
+
+  getAccountCapes: async (profileId: string) => {
+    const capes = await safeInvoke<MinecraftCape[]>(
+      "get_account_capes",
+      { profileId },
+      [],
+    );
+    return capes || [];
+  },
+
+  setActiveCape: async (profileId: string, capeId: string | null) => {
+    try {
+      await invoke("set_active_cape", { profileId, capeId });
+    } catch (error) {
+      console.error("[Obsy State] Failed to set active cape:", error);
       throw error;
     }
   },

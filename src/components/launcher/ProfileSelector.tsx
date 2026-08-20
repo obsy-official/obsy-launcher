@@ -16,39 +16,32 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { type Profile, useLauncherStore } from "@/state";
-import { invoke } from "@tauri-apps/api/core";
+import { useLauncherStore } from "@/state";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { ExternalLink, Loader2, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { AnimatePresence, m } from "framer-motion";
 import { ProfileAvatar } from "./ProfileAvatar";
-
-interface MsaDeviceCode {
-  device_code: string;
-  user_code: string;
-  verification_uri: string;
-  interval: number;
-  expires_in: number;
-}
+import { useMsaAuth } from "@/lib/useMsaAuth";
 
 export const ProfileSelector = () => {
-  const {
-    state,
-    profiles,
-    selectProfile,
-    addOfflineProfile,
-    removeProfile,
-    fetchProfiles,
-  } = useLauncherStore();
+  const { state, profiles, selectProfile, addOfflineProfile, removeProfile } =
+    useLauncherStore();
   const { t } = useTranslation();
 
   const [newUsername, setNewUsername] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [msaData, setMsaData] = useState<MsaDeviceCode | null>(null);
-  const [isMsaPolling, setIsMsaPolling] = useState(false);
-  const [msaError, setMsaError] = useState("");
+
+  const {
+    msaData,
+    isPolling: isMsaPolling,
+    error: msaError,
+    startAuth: handleMsaAuth,
+    reset: resetMsaAuth,
+  } = useMsaAuth(() => {
+    setIsDialogOpen(false);
+  });
 
   if (!state) return null;
 
@@ -61,64 +54,36 @@ export const ProfileSelector = () => {
     }
   };
 
-  const handleMsaAuth = async () => {
-    try {
-      setMsaError("");
-      setMsaData(null);
-      const data = await invoke<MsaDeviceCode>("start_msa_auth");
-      setMsaData(data);
-      setIsMsaPolling(true);
-
-      const newProfile = await invoke<Profile>("poll_msa_auth", {
-        deviceCode: data.device_code,
-        interval: data.interval,
-      });
-
-      await fetchProfiles();
-      if (newProfile?.id) {
-        selectProfile(newProfile.id);
-      }
-
-      setIsDialogOpen(false);
-      setMsaData(null);
-    } catch (e: unknown) {
-      setMsaError(e instanceof Error ? e.message : String(e));
-    } finally {
-      setIsMsaPolling(false);
-    }
-  };
+  const selectedProfile = profiles.find(
+    (p) => p.id === state.selectedProfileId,
+  );
 
   return (
     <div className="flex flex-col gap-2">
       <Label>{t("profile.selectProfile")}</Label>
       <div className="flex gap-2">
         <Select
-          value={state.selectedProfileId ?? null}
+          value={state.selectedProfileId ?? undefined}
           onValueChange={(val) => {
             if (val) selectProfile(val as string);
           }}
         >
           <SelectTrigger className="hover:border-primary/50 focus:ring-primary/20 w-full transition-colors duration-300">
-            <SelectValue placeholder={t("profile.selectAccount")}>
-              {(val: string | null) => {
-                if (!val) return null;
-                const p = profiles.find((p) => p.id === val);
-                if (!p) return null;
-                return (
-                  <div className="flex items-center gap-2 pl-1">
-                    <ProfileAvatar username={p.username} />
-                    <span>
-                      {p.username}{" "}
-                      <span className="text-muted-foreground text-xs">
-                        {p.microsoft
-                          ? t("profile.microsoft")
-                          : t("profile.offline")}
-                      </span>
-                    </span>
-                  </div>
-                );
-              }}
-            </SelectValue>
+            {selectedProfile ? (
+              <div className="flex items-center gap-2 pl-1">
+                <ProfileAvatar username={selectedProfile.username} />
+                <span className="font-medium">
+                  {selectedProfile.username}{" "}
+                  <span className="text-muted-foreground text-xs">
+                    {selectedProfile.microsoft
+                      ? t("profile.microsoft")
+                      : t("profile.offline")}
+                  </span>
+                </span>
+              </div>
+            ) : (
+              <SelectValue placeholder={t("profile.selectAccount")} />
+            )}
           </SelectTrigger>
           <SelectContent>
             {profiles.length === 0 ? (
@@ -154,8 +119,7 @@ export const ProfileSelector = () => {
           onOpenChange={(open) => {
             setIsDialogOpen(open);
             if (!open) {
-              setMsaData(null);
-              setMsaError("");
+              resetMsaAuth();
             }
           }}
         >

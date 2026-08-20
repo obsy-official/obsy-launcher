@@ -14,6 +14,10 @@ If you've noticed a bug or have a feature request, make sure to check if there's
 2. Run `npm install` in the repository root.
 3. Make your changes in the `src/` (frontend) or `src-tauri/` (backend) directories.
 
+## Developing & Submitting Addons
+
+Want to build a community addon, widget, or theme? Check out our comprehensive [Addon Development Guide](addons/README.md).
+
 ## Code Style
 
 This project uses `prettier` for code formatting.
@@ -41,6 +45,10 @@ This will format both your TypeScript/JavaScript files and Rust files (via `carg
 1. Сделайте форк репозитория и создайте ветку от `main`.
 2. Запустите `npm install` в корневой папке.
 3. Вносите свои изменения в `src/` (фронтенд) или `src-tauri/` (бэкенд).
+
+## Разработка и публикация аддонов
+
+Хотите создать собственный модуль, виджет, тему или интеграцию? Ознакомьтесь с [Руководством по созданию аддонов](addons/README.md).
 
 ## Стиль кода
 

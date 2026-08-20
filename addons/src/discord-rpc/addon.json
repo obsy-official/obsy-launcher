@@ -1,0 +1,36 @@
+{
+  "id": "discord-rpc",
+  "name": "Discord Rich Presence",
+  "version": "1.1.0",
+  "description": "Отображает ваш статус в Discord: версию Minecraft, выбранный профиль и время игры в лаунчере.",
+  "author": "Obsy Team",
+  "category": "integration",
+  "sizeBytes": 124800,
+  "permissions": [
+    "game:lifecycle",
+    "game:profiles",
+    "ui:slots",
+    "storage:local"
+  ],
+  "tags": ["discord", "rpc", "status", "social"],
+  "configSchema": {
+    "showProfile": {
+      "type": "boolean",
+      "label": "Показывать никнейм в статусе",
+      "description": "Отображает имя текущего профиля в Discord",
+      "default": true
+    },
+    "showVersion": {
+      "type": "boolean",
+      "label": "Показывать версию Minecraft",
+      "description": "Отображает установленную версию игры",
+      "default": true
+    },
+    "customDetails": {
+      "type": "string",
+      "label": "Кастомный статус",
+      "placeholder": "Играет в кубы",
+      "default": "Играет в Obsy Launcher"
+    }
+  }
+}

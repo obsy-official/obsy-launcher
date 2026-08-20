@@ -35,6 +35,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { AnimatePresence, m } from "framer-motion";
+import { PluginSlot } from "@/components/addons/PluginSlot";
 
 export const VersionSelector = () => {
   const { state, versions, selectVersion, openVersionFolder, deleteInstance } =
@@ -67,23 +68,21 @@ export const VersionSelector = () => {
                 );
                 if (!v) return <span>{state.selectedVersionId}</span>;
                 return (
-                  <div className="flex items-center gap-2">
+                  <div
+                    className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden text-left"
+                    title={v.id}
+                  >
                     {v.isLocal ? (
-                      <HardDrive className="text-muted-foreground h-4 w-4" />
+                      <HardDrive className="text-muted-foreground h-4 w-4 shrink-0" />
                     ) : (
-                      <Cloud className="text-muted-foreground h-4 w-4" />
+                      <Cloud className="text-muted-foreground h-4 w-4 shrink-0" />
                     )}
-                    <span>
-                      {v.id}{" "}
-                      <span className="text-muted-foreground ml-1 text-xs capitalize">
-                        ({v.type})
-                      </span>
-                    </span>
+                    <span className="truncate">{v.id}</span>
                   </div>
                 );
               })()
             ) : (
-              <span className="text-muted-foreground">
+              <span className="text-muted-foreground truncate">
                 {t("version.selectVersion")}
               </span>
             )}
@@ -111,23 +110,26 @@ export const VersionSelector = () => {
                       className="cursor-pointer"
                       data-checked={state.selectedVersionId === v.id}
                     >
-                      <div className="flex items-center gap-2">
-                        {v.isLocal ? (
-                          <HardDrive className="text-muted-foreground h-4 w-4" />
-                        ) : (
-                          <Cloud className="text-muted-foreground h-4 w-4" />
-                        )}
-                        <span>
-                          {v.id}{" "}
-                          <span className="text-muted-foreground ml-1 text-xs capitalize">
-                            ({v.type})
+                      <div className="flex w-full items-center justify-between gap-2">
+                        <div className="flex min-w-0 items-center gap-2">
+                          {v.isLocal ? (
+                            <HardDrive className="text-muted-foreground h-4 w-4 shrink-0" />
+                          ) : (
+                            <Cloud className="text-muted-foreground h-4 w-4 shrink-0" />
+                          )}
+                          <span className="truncate">{v.id}</span>
+                        </div>
+                        {!v.isLocal && v.type && (
+                          <span className="text-muted-foreground text-xs capitalize">
+                            {v.type}
                           </span>
-                        </span>
+                        )}
                       </div>
                     </CommandItem>
                   ))}
                 </CommandGroup>
               </CommandList>
+              <PluginSlot name="version.footer" />
             </Command>
           </PopoverContent>
         </Popover>

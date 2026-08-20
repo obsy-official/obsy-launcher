@@ -1,18 +1,18 @@
 import { relaunch } from "@tauri-apps/plugin-process";
 import { check } from "@tauri-apps/plugin-updater";
-import { Loader2 } from "lucide-react";
-import { useEffect, useState, lazy, Suspense } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { listen } from "@tauri-apps/api/event";
 import { Header } from "./components/launcher/Header";
 import { addGameLog } from "./lib/logger";
 import { LaunchButton } from "./components/launcher/LaunchButton";
 import { ProfileSelector } from "./components/launcher/ProfileSelector";
-import { SkinWardrobe } from "./components/launcher/SkinWardrobe";
 import { VersionSelector } from "./components/launcher/VersionSelector";
 import { Onboarding } from "./components/launcher/Onboarding";
 import "./i18n";
 import { useLauncherStore } from "./state";
+import { useAddonStore } from "./lib/addons/addonStore";
+import { PluginSlot } from "./components/addons/PluginSlot";
 import {
   AnimatePresence,
   LazyMotion,
@@ -21,16 +21,9 @@ import {
   m,
 } from "framer-motion";
 
-const SkinViewer = lazy(() =>
-  import("./components/launcher/SkinViewer").then((m) => ({
-    default: m.SkinViewer,
-  })),
-);
-
 const App = () => {
   const {
     state,
-    profiles,
     fetchState,
     fetchProfiles,
     fetchVersions,
@@ -41,7 +34,6 @@ const App = () => {
   } = useLauncherStore();
   const { t, i18n } = useTranslation();
   const [updateStatus, setUpdateStatus] = useState<string | null>(null);
-  const [isSkinLoading, setIsSkinLoading] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(() => {
     return localStorage.getItem("hasCompletedOnboarding") !== "true";
   });
@@ -91,6 +83,7 @@ const App = () => {
     };
 
     checkForAppUpdates();
+    useAddonStore.getState().initAddons();
     fetchStartupTime().then(() => {
       const ms = useLauncherStore.getState().startupTimeMs;
       if (ms) {
@@ -141,19 +134,10 @@ const App = () => {
 
   useEffect(() => {
     if (state?.selectedProfileId) {
-      setIsSkinLoading(true);
       refreshProfileToken(state.selectedProfileId);
-
-      refreshProfileSkin(state.selectedProfileId).finally(() => {
-        setIsSkinLoading(false);
-      });
+      refreshProfileSkin(state.selectedProfileId);
     }
   }, [state?.selectedProfileId, refreshProfileSkin, refreshProfileToken]);
-
-  const selectedProfile = state?.selectedProfileId
-    ? profiles.find((p) => p.id === state.selectedProfileId)
-    : null;
-  const finalSkinUrl = selectedProfile?.skinPng;
 
   return (
     <LazyMotion features={domAnimation}>
@@ -169,6 +153,7 @@ const App = () => {
           )}
           <Header />
           <main className="relative z-10 flex flex-1 flex-col items-center justify-center p-4">
+            <PluginSlot name="dashboard.widgets" className="mb-3" />
             <AnimatePresence>
               {state && (
                 <m.div
@@ -195,78 +180,8 @@ const App = () => {
                     </div>
                   </div>
 
-                  <AnimatePresence>
-                    {selectedProfile && (
-                      <m.div
-                        initial={{ opacity: 0, x: -20, scale: 0.9 }}
-                        animate={{ opacity: 1, x: 0, scale: 1 }}
-                        exit={{ opacity: 0, x: -20, scale: 0.9 }}
-                        transition={{
-                          duration: 0.4,
-                          type: "spring",
-                          bounce: 0.3,
-                        }}
-                        className="bg-card border-border/50 relative hidden w-64 flex-col items-center justify-between overflow-hidden rounded-xl border p-6 shadow-2xl backdrop-blur-md md:flex"
-                      >
-                        <div className="from-primary/5 pointer-events-none absolute inset-0 bg-gradient-to-bl to-transparent" />
-
-                        <AnimatePresence mode="wait">
-                          {isSkinLoading ? (
-                            <m.div
-                              key="loading"
-                              initial={{ opacity: 0 }}
-                              animate={{ opacity: 1 }}
-                              exit={{ opacity: 0 }}
-                              className="relative z-10 flex w-full flex-1 items-center justify-center"
-                            >
-                              <Loader2 className="text-primary h-8 w-8 animate-spin" />
-                            </m.div>
-                          ) : finalSkinUrl ? (
-                            <m.div
-                              key="skin"
-                              initial={{ opacity: 0, scale: 0.8 }}
-                              animate={{ opacity: 1, scale: 1 }}
-                              exit={{ opacity: 0, scale: 0.8 }}
-                              transition={{
-                                type: "spring",
-                                stiffness: 300,
-                                damping: 20,
-                              }}
-                              className="relative z-10 flex flex-1 items-center justify-center"
-                            >
-                              <Suspense
-                                fallback={
-                                  <div className="flex h-[260px] w-[160px] items-center justify-center">
-                                    <Loader2 className="text-primary/40 h-6 w-6 animate-spin" />
-                                  </div>
-                                }
-                              >
-                                <SkinViewer
-                                  skinUrl={finalSkinUrl}
-                                  slim={selectedProfile.slim}
-                                  width={160}
-                                  height={260}
-                                />
-                              </Suspense>
-                            </m.div>
-                          ) : (
-                            <m.div
-                              key="error"
-                              initial={{ opacity: 0 }}
-                              animate={{ opacity: 1 }}
-                              exit={{ opacity: 0 }}
-                              className="text-muted-foreground relative z-10 flex w-full flex-1 items-center justify-center text-center text-sm"
-                            >
-                              {t("app.skinNotFound")}
-                            </m.div>
-                          )}
-                        </AnimatePresence>
-                        <div className="relative z-10 mt-4 w-full">
-                          <SkinWardrobe />
-                        </div>
-                      </m.div>
-                    )}
-                  </AnimatePresence>
+                  {/* Side Slot: Extensible for 3D Skin Viewer and custom side widgets */}
+                  <PluginSlot name="dashboard.side" />
                 </m.div>
               )}
             </AnimatePresence>

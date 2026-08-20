@@ -213,11 +213,124 @@ pub struct MinecraftSkin {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct MinecraftCape {
+    pub id: String,
+    pub state: String,
+    pub url: String,
+    pub alias: Option<String>,
+    #[serde(default)]
+    pub base64: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct MinecraftProfile {
     pub id: String,
     pub name: String,
     #[serde(default)]
     pub skins: Vec<MinecraftSkin>,
+    #[serde(default)]
+    pub capes: Vec<MinecraftCape>,
+}
+
+pub async fn get_account_capes(mc_access_token: &str) -> Result<Vec<MinecraftCape>, String> {
+    let client = Client::new();
+    let res = client
+        .get("https://api.minecraftservices.com/minecraft/profile")
+        .bearer_auth(mc_access_token)
+        .send()
+        .await
+        .map_err(|e| e.to_string())?;
+
+    if !res.status().is_success() {
+        return Err("Failed to fetch profile capes".into());
+    }
+
+    let profile_json: serde_json::Value = res.json().await.map_err(|e| e.to_string())?;
+    let mut capes: Vec<MinecraftCape> = Vec::new();
+
+    if let Some(capes_arr) = profile_json.get("capes").and_then(|c| c.as_array()) {
+        use base64::{engine::general_purpose, Engine as _};
+        for c in capes_arr {
+            let id = c
+                .get("id")
+                .and_then(|v| v.as_str())
+                .unwrap_or_default()
+                .to_string();
+            let state = c
+                .get("state")
+                .and_then(|v| v.as_str())
+                .unwrap_or("INACTIVE")
+                .to_string();
+            let url = c
+                .get("url")
+                .and_then(|v| v.as_str())
+                .unwrap_or_default()
+                .to_string();
+            let alias = c
+                .get("alias")
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string());
+
+            let mut base64_data = None;
+            if !url.is_empty() {
+                if let Ok(img_res) = client.get(&url).send().await {
+                    if img_res.status().is_success() {
+                        if let Ok(bytes) = img_res.bytes().await {
+                            base64_data = Some(format!(
+                                "data:image/png;base64,{}",
+                                general_purpose::STANDARD.encode(&bytes)
+                            ));
+                        }
+                    }
+                }
+            }
+
+            capes.push(MinecraftCape {
+                id,
+                state,
+                url,
+                alias,
+                base64: base64_data,
+            });
+        }
+    }
+
+    Ok(capes)
+}
+
+pub async fn set_account_active_cape(
+    mc_access_token: &str,
+    cape_id: Option<&str>,
+) -> Result<(), String> {
+    let client = Client::new();
+    if let Some(id) = cape_id {
+        let res = client
+            .put("https://api.minecraftservices.com/minecraft/profile/capes/active")
+            .bearer_auth(mc_access_token)
+            .json(&serde_json::json!({ "capeId": id }))
+            .send()
+            .await
+            .map_err(|e| e.to_string())?;
+
+        if !res.status().is_success() {
+            let text = res.text().await.unwrap_or_default();
+            return Err(format!("Failed to activate cape: {}", text));
+        }
+    } else {
+        let res = client
+            .delete("https://api.minecraftservices.com/minecraft/profile/capes/active")
+            .bearer_auth(mc_access_token)
+            .send()
+            .await
+            .map_err(|e| e.to_string())?;
+
+        if !res.status().is_success() {
+            let text = res.text().await.unwrap_or_default();
+            return Err(format!("Failed to deactivate cape: {}", text));
+        }
+    }
+
+    Ok(())
 }
 
 pub async fn get_minecraft_profile(mc_access_token: &str) -> Result<MinecraftProfile, String> {
@@ -273,7 +386,9 @@ pub async fn upload_minecraft_skin(
     Ok(())
 }
 
-pub async fn fetch_public_skin_base64(uuid: &str) -> Result<Option<(String, bool)>, String> {
+pub async fn fetch_public_skin_base64(
+    uuid: &str,
+) -> Result<Option<(String, bool, Option<String>)>, String> {
     let client = Client::new();
     let res = client
         .get(format!(
@@ -307,25 +422,47 @@ pub async fn fetch_public_skin_base64(uuid: &str) -> Result<Option<(String, bool
 
             let textures_json: serde_json::Value =
                 serde_json::from_str(&decoded_str).map_err(|e| e.to_string())?;
+
+            let mut skin_b64 = None;
+            let mut is_slim = false;
+            let mut cape_b64 = None;
+
             if let Some(skin) = textures_json.get("textures").and_then(|t| t.get("SKIN")) {
                 if let Some(url) = skin.get("url").and_then(|u| u.as_str()) {
-                    let is_slim = skin
+                    is_slim = skin
                         .get("metadata")
                         .and_then(|m| m.get("model"))
                         .and_then(|m| m.as_str())
                         == Some("slim");
 
-                    // Download the skin image
                     let img_res = client.get(url).send().await.map_err(|e| e.to_string())?;
                     if img_res.status().is_success() {
                         let bytes = img_res.bytes().await.map_err(|e| e.to_string())?;
-                        let base64_img = format!(
+                        skin_b64 = Some(format!(
                             "data:image/png;base64,{}",
                             general_purpose::STANDARD.encode(&bytes)
-                        );
-                        return Ok(Some((base64_img, is_slim)));
+                        ));
                     }
                 }
+            }
+
+            if let Some(cape) = textures_json.get("textures").and_then(|t| t.get("CAPE")) {
+                if let Some(url) = cape.get("url").and_then(|u| u.as_str()) {
+                    if let Ok(img_res) = client.get(url).send().await {
+                        if img_res.status().is_success() {
+                            if let Ok(bytes) = img_res.bytes().await {
+                                cape_b64 = Some(format!(
+                                    "data:image/png;base64,{}",
+                                    general_purpose::STANDARD.encode(&bytes)
+                                ));
+                            }
+                        }
+                    }
+                }
+            }
+
+            if let Some(skin) = skin_b64 {
+                return Ok(Some((skin, is_slim, cape_b64)));
             }
         }
     }

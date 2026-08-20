@@ -1,3 +1,4 @@
+pub mod addons;
 pub mod auth;
 pub mod minecraft;
 pub mod msa;
@@ -281,23 +282,86 @@ async fn launch_game(
         .ok_or("Invalid minecraft dir path")?
         .to_string();
 
+    // Resolve base vanilla version and mod loader
+    let (mc_base_version, loader, loader_version) = {
+        let instance_json_path = mc_dir
+            .join("versions")
+            .join(&version_id)
+            .join(format!("{}.json", version_id));
+
+        let mut base = version_id.clone();
+        let mut ldr = None;
+        let mut ldr_ver = None;
+
+        if instance_json_path.exists() {
+            if let Ok(content) = std::fs::read_to_string(&instance_json_path) {
+                if let Ok(val) = serde_json::from_str::<serde_json::Value>(&content) {
+                    if let Some(inherits) = val.get("inheritsFrom").and_then(|v| v.as_str()) {
+                        base = inherits.to_string();
+                    }
+                    if let Some(l) = val.get("loader").and_then(|v| v.as_str()) {
+                        ldr = Some(l.to_string());
+                    }
+                    if let Some(lv) = val.get("loaderVersion").and_then(|v| v.as_str()) {
+                        ldr_ver = Some(lv.to_string());
+                    }
+                }
+            }
+        }
+
+        if ldr_ver.as_deref() == Some("0.16.10") {
+            ldr_ver = Some("0.19.3".to_string());
+        }
+
+        if base.contains('-') {
+            let parts: Vec<&str> = base.split('-').collect();
+            for part in parts.iter().rev() {
+                if part.starts_with("1.") || part.starts_with("26.") || part.starts_with("25.") {
+                    base = part.to_string();
+                    break;
+                }
+            }
+        }
+
+        if ldr.is_none()
+            && (version_id.contains("fabric")
+                || version_id.contains("optimized")
+                || version_id.contains('-'))
+        {
+            ldr = Some("fabric".to_string());
+            ldr_ver = Some("0.19.3".to_string());
+        }
+
+        (base, ldr, ldr_ver)
+    };
+
     let java_path = if let Some(path) = &launcher_state.java_path {
         if path.trim().is_empty() {
-            crate::minecraft::java::download_java_if_needed(&version_id, &app).await?
+            crate::minecraft::java::download_java_if_needed(&mc_base_version, &app).await?
         } else {
-            path.clone()
+            let mut is_ok = false;
+            if let Ok(out) = std::process::Command::new(path).arg("-version").output() {
+                if out.status.success() {
+                    is_ok = true;
+                }
+            }
+            if is_ok {
+                path.clone()
+            } else {
+                crate::minecraft::java::download_java_if_needed(&mc_base_version, &app).await?
+            }
         }
     } else {
-        crate::minecraft::java::download_java_if_needed(&version_id, &app).await?
+        crate::minecraft::java::download_java_if_needed(&mc_base_version, &app).await?
     };
 
     let mut launcher = open_launcher::Launcher::new(
         &mc_dir_str,
         &java_path,
         open_launcher::version::Version {
-            minecraft_version: version_id.clone(),
-            loader: None,
-            loader_version: None,
+            minecraft_version: mc_base_version.clone(),
+            loader: loader.clone(),
+            loader_version: loader_version.clone(),
         },
     )
     .await;
@@ -555,6 +619,7 @@ async fn poll_msa_auth(
         username: mc_profile.name,
         microsoft: true,
         skin_png,
+        cape_png: None,
         slim,
         capes: vec![],
         access_token: Some(mc_token),
@@ -669,11 +734,12 @@ async fn refresh_profile_skin(
         .ok_or("Profile not found")?;
 
     if profile.microsoft {
-        if let Ok(Some((base64_data, slim))) =
+        if let Ok(Some((base64_data, slim, cape_b64))) =
             crate::msa::fetch_public_skin_base64(&profile.id).await
         {
             profile.skin_png = Some(base64_data);
             profile.slim = slim;
+            profile.cape_png = cape_b64;
             state.profile_store.save(&profiles)?;
         }
     } else {
@@ -739,6 +805,83 @@ async fn refresh_profile_token(
 }
 
 #[tauri::command]
+async fn get_account_capes(
+    state: State<'_, AppState>,
+    profile_id: String,
+) -> Result<Vec<crate::msa::MinecraftCape>, String> {
+    let mut profiles = state.profile_store.load();
+    let profile = profiles
+        .iter_mut()
+        .find(|p| p.id == profile_id)
+        .ok_or("Profile not found")?;
+
+    if !profile.microsoft {
+        return Ok(Vec::new());
+    }
+
+    let mut mc_token = profile.access_token.clone();
+    if let Some(refresh_token) = &profile.refresh_token {
+        if let Ok(new_msa) = crate::msa::refresh_msa_token(refresh_token).await {
+            if let Ok((xbl, uhs)) = crate::msa::auth_xbox_live(&new_msa.access_token).await {
+                if let Ok(xsts) = crate::msa::auth_xsts(&xbl).await {
+                    if let Ok(token) = crate::msa::auth_minecraft(&uhs, &xsts).await {
+                        mc_token = Some(token.clone());
+                        profile.access_token = Some(token);
+                        profile.refresh_token = Some(new_msa.refresh_token);
+                        let _ = state.profile_store.save(&profiles);
+                    }
+                }
+            }
+        }
+    }
+
+    if let Some(token) = mc_token {
+        crate::msa::get_account_capes(&token).await
+    } else {
+        Ok(Vec::new())
+    }
+}
+
+#[tauri::command]
+async fn set_active_cape(
+    state: State<'_, AppState>,
+    profile_id: String,
+    cape_id: Option<String>,
+) -> Result<(), String> {
+    let mut profiles = state.profile_store.load();
+    let profile = profiles
+        .iter_mut()
+        .find(|p| p.id == profile_id)
+        .ok_or("Profile not found")?;
+
+    if !profile.microsoft {
+        return Err("Capes are only supported on Microsoft accounts".into());
+    }
+
+    let mut mc_token = profile.access_token.clone();
+    if let Some(refresh_token) = &profile.refresh_token {
+        if let Ok(new_msa) = crate::msa::refresh_msa_token(refresh_token).await {
+            if let Ok((xbl, uhs)) = crate::msa::auth_xbox_live(&new_msa.access_token).await {
+                if let Ok(xsts) = crate::msa::auth_xsts(&xbl).await {
+                    if let Ok(token) = crate::msa::auth_minecraft(&uhs, &xsts).await {
+                        mc_token = Some(token.clone());
+                        profile.access_token = Some(token);
+                        profile.refresh_token = Some(new_msa.refresh_token);
+                        let _ = state.profile_store.save(&profiles);
+                    }
+                }
+            }
+        }
+    }
+
+    if let Some(token) = mc_token {
+        crate::msa::set_account_active_cape(&token, cape_id.as_deref()).await
+    } else {
+        Err("Missing access token for Microsoft profile".into())
+    }
+}
+
+#[tauri::command]
 fn open_version_folder(version_id: String, app: tauri::AppHandle) -> Result<(), String> {
     validate_safe_id(&version_id)?;
     use tauri_plugin_opener::OpenerExt;
@@ -794,6 +937,177 @@ fn delete_instance(
     Ok(())
 }
 
+#[tauri::command]
+async fn create_instance(
+    id: String,
+    base_version: String,
+    files: Option<Vec<(String, Vec<u8>)>>,
+    state: State<'_, AppState>,
+    app: tauri::AppHandle,
+) -> Result<String, String> {
+    validate_safe_id(&id)?;
+    let mc_dir = crate::minecraft::versions::get_minecraft_dir();
+
+    let version_dir = mc_dir.join("versions").join(&id);
+    std::fs::create_dir_all(&version_dir).map_err(|e| e.to_string())?;
+
+    let version_json_path = version_dir.join(format!("{}.json", id));
+    let minimal_json = serde_json::json!({
+        "id": id,
+        "inheritsFrom": base_version,
+        "type": "custom",
+        "loader": "fabric",
+        "loaderVersion": "0.19.3"
+    });
+    std::fs::write(&version_json_path, minimal_json.to_string()).map_err(|e| e.to_string())?;
+
+    let instance_dir = mc_dir.join("instances").join(&id);
+    let mods_dir = instance_dir.join("mods");
+    std::fs::create_dir_all(&mods_dir).map_err(|e| e.to_string())?;
+
+    if let Some(file_list) = files {
+        for (filename, bytes) in file_list {
+            let file_path = mods_dir.join(filename);
+            let _ = std::fs::write(file_path, bytes);
+        }
+    }
+
+    let mut current_state = state.launcher_state.lock().map_err(|e| e.to_string())?;
+    current_state.selected_version_id = Some(id.clone());
+    current_state.save(&app)?;
+
+    Ok(id)
+}
+
+#[tauri::command]
+async fn download_instance_file(
+    instance_id: String,
+    subpath: String,
+    url: String,
+) -> Result<String, String> {
+    validate_safe_id(&instance_id)?;
+    if subpath.contains("..") || subpath.starts_with('/') || subpath.starts_with('\\') {
+        return Err("Invalid subpath (directory traversal forbidden)".to_string());
+    }
+
+    let mc_dir = crate::minecraft::versions::get_minecraft_dir();
+    let instance_dir = mc_dir.join("instances").join(&instance_id);
+    let dest_path = instance_dir.join(&subpath);
+
+    if let Some(parent) = dest_path.parent() {
+        std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+    }
+
+    let client = crate::open_launcher::utils::get_http_client();
+    let resp = client
+        .get(&url)
+        .header("User-Agent", "ObsyLauncher/0.1.9")
+        .send()
+        .await
+        .map_err(|e| format!("Failed to download file: {}", e))?;
+
+    let bytes = resp
+        .bytes()
+        .await
+        .map_err(|e| format!("Failed to read bytes: {}", e))?;
+
+    std::fs::write(&dest_path, &bytes).map_err(|e| e.to_string())?;
+
+    Ok(subpath)
+}
+
+#[tauri::command]
+async fn read_instance_zip_entry(
+    instance_id: String,
+    zip_subpath: String,
+    entry_path: String,
+) -> Result<String, String> {
+    validate_safe_id(&instance_id)?;
+    if zip_subpath.contains("..") {
+        return Err("Invalid zip_subpath".to_string());
+    }
+    let mc_dir = crate::minecraft::versions::get_minecraft_dir();
+    let zip_full_path = mc_dir
+        .join("instances")
+        .join(&instance_id)
+        .join(&zip_subpath);
+
+    let file = std::fs::File::open(&zip_full_path).map_err(|e| e.to_string())?;
+    let mut archive = zip::ZipArchive::new(file).map_err(|e| e.to_string())?;
+    let mut entry = archive.by_name(&entry_path).map_err(|e| e.to_string())?;
+
+    use std::io::Read;
+    let mut content = String::new();
+    entry
+        .read_to_string(&mut content)
+        .map_err(|e| e.to_string())?;
+    Ok(content)
+}
+
+#[tauri::command]
+async fn extract_instance_zip_folder(
+    instance_id: String,
+    zip_subpath: String,
+    folder_prefix: String,
+    dest_subpath: String,
+) -> Result<(), String> {
+    validate_safe_id(&instance_id)?;
+    if zip_subpath.contains("..") || dest_subpath.contains("..") {
+        return Err("Invalid subpath".to_string());
+    }
+    let mc_dir = crate::minecraft::versions::get_minecraft_dir();
+    let instance_dir = mc_dir.join("instances").join(&instance_id);
+    let zip_full_path = instance_dir.join(&zip_subpath);
+
+    let file = std::fs::File::open(&zip_full_path).map_err(|e| e.to_string())?;
+    let mut archive = zip::ZipArchive::new(file).map_err(|e| e.to_string())?;
+
+    let prefix = if folder_prefix.ends_with('/') || folder_prefix.is_empty() {
+        folder_prefix
+    } else {
+        format!("{}/", folder_prefix)
+    };
+
+    for i in 0..archive.len() {
+        if let Ok(mut entry) = archive.by_index(i) {
+            let name = entry.name().to_string();
+            if name.starts_with(&prefix) && !name.ends_with('/') {
+                let rel = name.strip_prefix(&prefix).unwrap_or(&name);
+                let target = if dest_subpath.is_empty() {
+                    instance_dir.join(rel)
+                } else {
+                    instance_dir.join(&dest_subpath).join(rel)
+                };
+
+                if let Some(parent) = target.parent() {
+                    let _ = std::fs::create_dir_all(parent);
+                }
+                if let Ok(mut out) = std::fs::File::create(&target) {
+                    use std::io::copy;
+                    let _ = copy(&mut entry, &mut out);
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
+#[tauri::command]
+async fn delete_instance_file(instance_id: String, subpath: String) -> Result<(), String> {
+    validate_safe_id(&instance_id)?;
+    if subpath.contains("..") {
+        return Err("Invalid subpath".to_string());
+    }
+    let mc_dir = crate::minecraft::versions::get_minecraft_dir();
+    let file_path = mc_dir.join("instances").join(&instance_id).join(&subpath);
+    if file_path.is_file() {
+        let _ = std::fs::remove_file(file_path);
+    } else if file_path.is_dir() {
+        let _ = std::fs::remove_dir_all(file_path);
+    }
+    Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -830,10 +1144,25 @@ pub fn run() {
             apply_skin,
             refresh_profile_skin,
             refresh_profile_token,
+            get_account_capes,
+            set_active_cape,
             open_version_folder,
             delete_instance,
+            create_instance,
+            download_instance_file,
+            read_instance_zip_entry,
+            extract_instance_zip_folder,
+            delete_instance_file,
             get_startup_time,
-            get_app_memory_usage
+            get_app_memory_usage,
+            addons::get_installed_addons_from_disk,
+            addons::read_addon_file,
+            addons::uninstall_addon_files,
+            addons::install_addon_from_archive_bytes,
+            addons::download_and_install_addon,
+            addons::download_addon_archive_bytes,
+            addons::save_local_addon,
+            addons::inspect_addon_archive
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

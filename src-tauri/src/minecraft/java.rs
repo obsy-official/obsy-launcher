@@ -14,17 +14,28 @@ pub fn get_required_java_version(mc_version: &str) -> u32 {
             if let Some(java_version) = json.get("javaVersion") {
                 if let Some(major) = java_version.get("majorVersion") {
                     if let Some(major_u32) = major.as_u64() {
-                        return major_u32 as u32;
+                        let ver = major_u32 as u32;
+                        if ver >= 25 {
+                            return 25;
+                        } else if ver >= 21 {
+                            return 21;
+                        } else if ver >= 17 {
+                            return 17;
+                        } else {
+                            return 8;
+                        }
                     }
                 }
             }
         }
     }
 
-    let (_major, minor, patch) = crate::open_launcher::utils::parse_mc_version(mc_version);
-    if minor > 20 || (minor == 20 && patch >= 5) {
+    let (major, minor, patch) = crate::open_launcher::utils::parse_mc_version(mc_version);
+    if major >= 26 || (major == 1 && minor >= 26) {
+        25
+    } else if (major == 1 && minor > 20) || (major == 1 && minor == 20 && patch >= 5) {
         21
-    } else if minor >= 17 {
+    } else if major == 1 && minor >= 17 {
         17
     } else {
         8
@@ -76,7 +87,7 @@ pub async fn download_java_if_needed(mc_version: &str, app: &AppHandle) -> Resul
         }
     }
 
-    if let Some(sys_java) = find_system_java() {
+    if let Some(sys_java) = find_system_java(version) {
         return Ok(sys_java);
     }
 
@@ -193,7 +204,40 @@ pub async fn download_java_if_needed(mc_version: &str, app: &AppHandle) -> Resul
     }
 }
 
-fn find_system_java() -> Option<String> {
+fn get_java_executable_version(path: &str) -> Option<u32> {
+    let output = std::process::Command::new(path)
+        .arg("-version")
+        .output()
+        .ok()?;
+
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let text = format!("{}\n{}", stderr, stdout);
+
+    for line in text.lines() {
+        if line.contains("version \"") {
+            if let Some(start) = line.find("version \"") {
+                let rest = &line[start + 9..];
+                if let Some(end) = rest.find('\"') {
+                    let ver_str = &rest[..end];
+                    if ver_str.starts_with("1.8") {
+                        return Some(8);
+                    }
+                    if let Some(dot) = ver_str.find('.') {
+                        if let Ok(major) = ver_str[..dot].parse::<u32>() {
+                            return Some(major);
+                        }
+                    } else if let Ok(major) = ver_str.parse::<u32>() {
+                        return Some(major);
+                    }
+                }
+            }
+        }
+    }
+    None
+}
+
+fn find_system_java(required_version: u32) -> Option<String> {
     if let Ok(java_home) = std::env::var("JAVA_HOME") {
         let path =
             std::path::Path::new(&java_home)
@@ -204,7 +248,10 @@ fn find_system_java() -> Option<String> {
                     "java"
                 });
         if path.exists() {
-            return Some(path.to_string_lossy().to_string());
+            let path_str = path.to_string_lossy().to_string();
+            if get_java_executable_version(&path_str) == Some(required_version) {
+                return Some(path_str);
+            }
         }
     }
 
@@ -219,14 +266,19 @@ fn find_system_java() -> Option<String> {
                     .join("bin")
                     .join("java");
                 if java_path.exists() {
-                    return Some(java_path.to_string_lossy().to_string());
+                    let path_str = java_path.to_string_lossy().to_string();
+                    if get_java_executable_version(&path_str) == Some(required_version) {
+                        return Some(path_str);
+                    }
                 }
             }
         }
 
         let brew_java = "/opt/homebrew/opt/openjdk/bin/java";
         if std::path::Path::new(brew_java).exists() {
-            return Some(brew_java.to_string());
+            if get_java_executable_version(brew_java) == Some(required_version) {
+                return Some(brew_java.to_string());
+            }
         }
 
         if let Some(home) = dirs::home_dir() {
@@ -238,7 +290,10 @@ fn find_system_java() -> Option<String> {
                 .join("bin")
                 .join("java");
             if sdkman_java.exists() {
-                return Some(sdkman_java.to_string_lossy().to_string());
+                let path_str = sdkman_java.to_string_lossy().to_string();
+                if get_java_executable_version(&path_str) == Some(required_version) {
+                    return Some(path_str);
+                }
             }
         }
     }
@@ -252,7 +307,10 @@ fn find_system_java() -> Option<String> {
             for entry in entries.flatten() {
                 let java_path = entry.path().join("bin").join("java.exe");
                 if java_path.exists() {
-                    return Some(java_path.to_string_lossy().to_string());
+                    let path_str = java_path.to_string_lossy().to_string();
+                    if get_java_executable_version(&path_str) == Some(required_version) {
+                        return Some(path_str);
+                    }
                 }
             }
         }
@@ -263,7 +321,10 @@ fn find_system_java() -> Option<String> {
             for entry in entries.flatten() {
                 let java_path = entry.path().join("bin").join("java.exe");
                 if java_path.exists() {
-                    return Some(java_path.to_string_lossy().to_string());
+                    let path_str = java_path.to_string_lossy().to_string();
+                    if get_java_executable_version(&path_str) == Some(required_version) {
+                        return Some(path_str);
+                    }
                 }
             }
         }
@@ -275,23 +336,23 @@ fn find_system_java() -> Option<String> {
             for entry in entries.flatten() {
                 let java_path = entry.path().join("bin").join("java");
                 if java_path.exists() {
-                    return Some(java_path.to_string_lossy().to_string());
+                    let path_str = java_path.to_string_lossy().to_string();
+                    if get_java_executable_version(&path_str) == Some(required_version) {
+                        return Some(path_str);
+                    }
                 }
             }
         }
     }
 
-    if let Ok(output) = std::process::Command::new(if cfg!(target_os = "windows") {
+    let default_cmd = if cfg!(target_os = "windows") {
         "java.exe"
     } else {
         "java"
-    })
-    .arg("-version")
-    .output()
-    {
-        if output.status.success() {
-            return Some("java".to_string());
-        }
+    };
+
+    if get_java_executable_version(default_cmd) == Some(required_version) {
+        return Some(default_cmd.to_string());
     }
 
     None
