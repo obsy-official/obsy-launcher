@@ -168,7 +168,7 @@ const App = () => {
                       <m.div
                         initial={{ opacity: 0, y: -10 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="text-accent relative z-10 animate-pulse text-center text-sm font-medium"
+                        className="text-primary relative z-10 animate-pulse text-center text-sm font-medium"
                       >
                         {updateStatus}
                       </m.div>

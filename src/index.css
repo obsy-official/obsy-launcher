@@ -167,3 +167,16 @@ input[id*="hidden-input"],
   --sidebar-border: hsl(240 3.7% 15.9%);
   --sidebar-ring: hsl(217.2 91.2% 59.8%);
 }
+
+/* Global modal and dialog viewport bounds and padding enforcement */
+[data-slot="dialog-content"],
+[data-base-ui-dialog-popup] {
+  max-width: calc(100vw - 2.5rem) !important;
+  max-height: calc(100vh - 2.5rem) !important;
+  padding: 1.25rem !important;
+  gap: 1rem !important;
+  overflow: hidden !important;
+  display: flex !important;
+  flex-direction: column !important;
+  box-sizing: border-box !important;
+}
