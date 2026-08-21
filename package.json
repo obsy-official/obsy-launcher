@@ -2,7 +2,7 @@
   "name": "obsy-launcher",
   "private": true,
   "description": "Obsy Launcher - A modern cross-platform Minecraft launcher",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "type": "module",
   "scripts": {
     "dev": "vite",
