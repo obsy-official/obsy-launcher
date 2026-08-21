@@ -1,7 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
-use tauri::Manager;
 use uuid::Uuid;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -19,9 +18,8 @@ pub struct WardrobeStore {
 }
 
 impl WardrobeStore {
-    pub fn new(app_handle: &tauri::AppHandle) -> Self {
-        let mut path = app_handle.path().app_config_dir().unwrap();
-        path.push("wardrobe.json");
+    pub fn new(_app_handle: &tauri::AppHandle) -> Self {
+        let path = crate::minecraft::versions::get_minecraft_dir().join("wardrobe.json");
         Self { path }
     }
 

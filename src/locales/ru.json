@@ -28,7 +28,6 @@
       "microsoftLoginError": "Ошибка авторизации",
       "username": "Имя пользователя",
       "enterNickname": "Введите ваш никнейм",
-      "cancel": "Отмена",
       "add": "Добавить",
       "addProfileTitle": "Добавить профиль",
       "deleteTooltip": "Удалить профиль"
@@ -39,9 +38,25 @@
       "openFolder": "Открыть папку сборки",
       "deleteInstance": "Удалить сборку",
       "confirmDelete": "Вы уверены, что хотите удалить эту сборку? Это действие нельзя отменить.",
-      "cancel": "Отмена",
       "delete": "Удалить",
-      "searchVersion": "Поиск версии..."
+      "searchPlaceholder": "Поиск версии...",
+      "noVersionsFound": "Версии не найдены",
+      "installed": "Установленные сборки",
+      "releases": "Официальные релизы",
+      "snapshots": "Снапшоты и другие",
+      "createInstance": "Создать сборку",
+      "createInstanceTitle": "Создать новую сборку",
+      "createInstanceDesc": "Выберите версию игры и загрузчик модов для изолированного запуска.",
+      "instanceName": "Название сборки",
+      "instanceNamePlaceholder": "Например: Fabric 1.21.4",
+      "minecraftVersion": "Версия Minecraft",
+      "loader": "Загрузчик модов",
+      "loaderFabric": "Fabric (Рекомендуется)",
+      "loaderNeoForge": "NeoForge (Современный Forge)",
+      "loaderForge": "Forge (Классический)",
+      "loaderQuilt": "Quilt",
+      "loaderVanilla": "Vanilla (Без модов)",
+      "create": "Создать"
     },
     "launch": {
       "play": "Играть",
@@ -52,14 +67,15 @@
       "downloading_libraries": "Загрузка библиотек...",
       "downloading_assets": "Загрузка ресурсов...",
       "checking_assets": "Проверка ресурсов...",
-      "checking_natives": "Проверка библиотек...",
+      "checking_natives": "Проверка нативных библиотек...",
       "checking_libraries": "Проверка библиотек...",
       "extracting_natives": "Распаковка библиотек...",
       "installing_version": "Установка версии...",
       "installing_assets": "Установка ресурсов...",
       "installing_libraries": "Установка библиотек...",
       "launching": "Запуск Minecraft...",
-      "success": "Успешно!"
+      "success": "Успешно!",
+      "running": "Игра запущена"
     },
     "settings": {
       "title": "Настройки",
@@ -101,18 +117,21 @@
     },
     "addons": {
       "title": "Аддоны",
-      "subtitle": "Модули и расширения возможностей лаунчера",
+      "subtitle": "Расширяйте возможности Obsy Launcher плагинами и модами",
       "search": "Поиск аддонов...",
       "notFound": "Ничего не найдено",
       "install": "Установить",
       "installed": "Установлен",
       "reinstall": "Переустановить / Обновить",
-      "installFromFile": "Установить .zip",
-      "installFromUrl": "Установить по ссылке",
+      "installZip": "Установить из .zip",
+      "installZipBtn": "Из файла",
+      "installUrl": "Установить по ссылке",
+      "installUrlBtn": "По ссылке",
       "urlDialogTitle": "Установка аддона по ссылке",
       "urlDialogDesc": "Введите прямую ссылку на .zip архив аддона (например, с GitHub Releases):",
       "urlInputPlaceholder": "https://example.com/addon.zip",
       "downloadingFromUrl": "Загрузка архива из сети...",
+      "downloadError": "Не удалось загрузить аддон по ссылке",
       "refreshCatalog": "Обновить каталог",
       "catalogRefreshed": "Каталог обновлен",
       "uninstall": "Удалить аддон",
@@ -122,6 +141,16 @@
       "updateAvailable": "Доступно обновление",
       "verifiedAuthor": "Официальный проверенный разработчик",
       "thirdPartyAuthor": "Сторонний аддон",
+      "trustLevels": {
+        "official": "Официальный аддон Obsy",
+        "community": "Проверен каталогом сообщества",
+        "custom": "Сторонний аддон (не проверен)"
+      },
+      "trustBadge": {
+        "official": "Obsy Official",
+        "community": "Community",
+        "custom": "Custom"
+      },
       "noInstalled": "У вас пока нет установленных аддонов",
       "noInstalledDesc": "Перейдите во вкладку Каталог, чтобы добавить новые возможности в лаунчер.",
       "securityTitle": "Установка аддона",
@@ -178,6 +207,17 @@
           "desc": "Чтение и запись файлов в папку сборки"
         }
       }
+    },
+    "crash": {
+      "detected": "Обнаружен сбой игры",
+      "actionSuccess": "Действие выполнено: {{message}}",
+      "actionFailed": "Не удалось применить действие",
+      "diagnostics": "Умная диагностика",
+      "quickFixes": "Быстрые решения:"
+    },
+    "playtime": {
+      "title": "Сыграно",
+      "total": "Всего сыграно: {{time}}"
     }
   }
 }

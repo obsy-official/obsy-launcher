@@ -14,18 +14,30 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useLauncherStore } from "@/state";
 import { getVersion } from "@tauri-apps/api/app";
-import { Settings, Zap, Cpu } from "lucide-react";
+import { Settings, Zap, Cpu, Clock } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { invoke } from "@tauri-apps/api/core";
 
 export const SettingsDialog = () => {
   const { state, updateState, fetchVersions, startupTimeMs, appMemoryMb } =
     useLauncherStore();
   const { t } = useTranslation();
   const [appVersion, setAppVersion] = useState<string>("0.1.7");
+  const [totalPlaytime, setTotalPlaytime] = useState<string | null>(null);
 
   useEffect(() => {
     getVersion()
       .then((ver) => setAppVersion(ver))
+      .catch(() => {});
+
+    invoke<{ formattedTotal: string; totalSeconds: number }>(
+      "get_playtime_summary",
+    )
+      .then((res) => {
+        if (res && res.totalSeconds > 0) {
+          setTotalPlaytime(res.formattedTotal);
+        }
+      })
       .catch(() => {});
   }, []);
 
@@ -259,6 +271,12 @@ export const SettingsDialog = () => {
         <div className="border-border/40 text-muted-foreground flex items-center justify-between border-t pt-3 font-mono text-[11px]">
           <span>Obsy Launcher v{appVersion}</span>
           <div className="flex items-center gap-3">
+            {totalPlaytime && (
+              <span className="flex items-center gap-1 text-amber-400">
+                <Clock className="h-3 w-3" />
+                {t("playtime.title")}: {totalPlaytime}
+              </span>
+            )}
             {startupTimeMs !== null && (
               <span className="flex items-center gap-1 text-emerald-400">
                 <Zap className="h-3 w-3" />

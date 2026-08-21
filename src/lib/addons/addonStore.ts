@@ -25,6 +25,8 @@ interface AddonDiskInfo {
   tags: string[];
   hasJs: boolean;
   hasCss: boolean;
+  checksum?: string;
+  verified?: boolean;
 }
 
 const STORAGE_KEY = "obsy:installed_addons:v3";
@@ -125,15 +127,26 @@ export const useAddonStore = create<AddonStateStore>((set, get) => ({
     let installed: Record<string, InstalledAddon> = {};
     const activations: Promise<void>[] = [];
 
-    // 1. Read addons on disk
     try {
       const diskAddons = await invoke<AddonDiskInfo[]>(
         "get_installed_addons_from_disk",
       );
 
-      for (const diskAddon of diskAddons) {
+      const loaded = await Promise.all(
+        diskAddons.map(async (diskAddon) => {
+          const instance = await loadAddonFromDisk(diskAddon.id);
+          return { diskAddon, instance };
+        }),
+      );
+
+      for (const { diskAddon, instance } of loaded) {
         const isStored = storedMap.get(diskAddon.id);
         const enabled = isStored ? isStored.enabled : true;
+        const catalogItem = get().catalog.find((c) => c.id === diskAddon.id);
+        const isVerified =
+          diskAddon.verified ??
+          catalogItem?.verified ??
+          catalogItem !== undefined;
 
         const manifest: AddonManifest = {
           id: diskAddon.id,
@@ -146,11 +159,10 @@ export const useAddonStore = create<AddonStateStore>((set, get) => ({
           sizeBytes: diskAddon.sizeBytes,
           permissions: (diskAddon.permissions as any[]) || [],
           tags: diskAddon.tags,
-          configSchema: get().catalog.find((c) => c.id === diskAddon.id)
-            ?.configSchema,
+          checksum: diskAddon.checksum || catalogItem?.checksum,
+          configSchema: catalogItem?.configSchema,
+          verified: isVerified,
         };
-
-        const instance = await loadAddonFromDisk(diskAddon.id);
 
         installed[diskAddon.id] = {
           manifest,
@@ -171,7 +183,6 @@ export const useAddonStore = create<AddonStateStore>((set, get) => ({
     set({ installedAddons: installed, isInitialized: true });
     await Promise.all(activations);
 
-    // 2. Background refresh of remote catalog from network
     setTimeout(() => {
       get().refreshCatalog().catch(console.error);
     }, 500);
@@ -220,6 +231,10 @@ export const useAddonStore = create<AddonStateStore>((set, get) => ({
         archiveBytes: bytes,
       });
 
+      const catalogItem = get().catalog.find((c) => c.id === diskInfo.id);
+      const isVerified =
+        diskInfo.verified ?? catalogItem?.verified ?? catalogItem !== undefined;
+
       const manifest: AddonManifest = {
         id: diskInfo.id,
         name: diskInfo.name,
@@ -231,6 +246,8 @@ export const useAddonStore = create<AddonStateStore>((set, get) => ({
         sizeBytes: diskInfo.sizeBytes,
         permissions: (diskInfo.permissions as any[]) || [],
         tags: diskInfo.tags || [],
+        checksum: diskInfo.checksum || catalogItem?.checksum,
+        verified: isVerified,
       };
 
       return { manifest, bytes };
@@ -250,6 +267,13 @@ export const useAddonStore = create<AddonStateStore>((set, get) => ({
         },
       );
 
+      const catalogItem = get().catalog.find((c) => c.id === diskInfo.id);
+      const isVerified =
+        diskInfo.verified ??
+        customManifest?.verified ??
+        catalogItem?.verified ??
+        catalogItem !== undefined;
+
       const manifest: AddonManifest = customManifest || {
         id: diskInfo.id,
         name: diskInfo.name,
@@ -261,6 +285,8 @@ export const useAddonStore = create<AddonStateStore>((set, get) => ({
         sizeBytes: diskInfo.sizeBytes,
         permissions: (diskInfo.permissions as any[]) || [],
         tags: diskInfo.tags,
+        checksum: diskInfo.checksum || catalogItem?.checksum,
+        verified: isVerified,
       };
 
       if (addonRegistry.isAddonActive(diskInfo.id)) {

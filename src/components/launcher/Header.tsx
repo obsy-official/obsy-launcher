@@ -6,7 +6,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useLauncherStore, type Language } from "@/state";
-import { Globe, Zap, Cpu } from "lucide-react";
+import { Globe } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { SettingsDialog } from "./SettingsDialog";
 import { ConsoleDialog } from "./ConsoleDialog";
@@ -14,7 +14,7 @@ import { AddonsDialog } from "@/components/addons/AddonsDialog";
 import { PluginSlot } from "@/components/addons/PluginSlot";
 
 export const Header = () => {
-  const { state, updateState, startupTimeMs, appMemoryMb } = useLauncherStore();
+  const { state, updateState } = useLauncherStore();
   const { t } = useTranslation();
 
   const handleLanguageChange = (val: string | null) => {
@@ -50,26 +50,6 @@ export const Header = () => {
         >
           {t("app.title")}
         </h1>
-        <div className="hidden items-center gap-1.5 sm:flex">
-          {startupTimeMs !== null && (
-            <div
-              className="flex items-center gap-1 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-0.5 font-mono text-[11px] text-emerald-400 select-none"
-              title={`Время запуска: ${startupTimeMs} мс`}
-            >
-              <Zap className="h-3 w-3 text-emerald-400" />
-              <span>{startupTimeMs} ms</span>
-            </div>
-          )}
-          {appMemoryMb !== null && (
-            <div
-              className="flex items-center gap-1 rounded-full border border-sky-500/20 bg-sky-500/10 px-2.5 py-0.5 font-mono text-[11px] text-sky-400 select-none"
-              title={`Использование RAM: ${appMemoryMb} MB`}
-            >
-              <Cpu className="h-3 w-3 text-sky-400" />
-              <span>{appMemoryMb} MB</span>
-            </div>
-          )}
-        </div>
       </div>
       {state && (
         <div className="flex items-center gap-2">

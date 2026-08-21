@@ -55,6 +55,8 @@ export type ConfigField =
 
 export type ConfigSchema = Record<string, ConfigField>;
 
+export type AddonTrustLevel = "official" | "community" | "custom";
+
 export interface AddonManifest {
   id: string;
   name: string;
@@ -74,6 +76,25 @@ export interface AddonManifest {
   changelog?: string;
   dependencies?: Record<string, string>;
   configSchema?: ConfigSchema;
+  verified?: boolean;
+  trustLevel?: AddonTrustLevel;
+}
+
+export function getAddonTrustLevel(addon: {
+  author?: string;
+  verified?: boolean;
+}): AddonTrustLevel {
+  if (addon.verified) {
+    if (
+      addon.author === "Obsy Team" ||
+      addon.author === "Obsy Design Studio" ||
+      addon.author === "Obsy QA Team"
+    ) {
+      return "official";
+    }
+    return "community";
+  }
+  return "custom";
 }
 
 export type AddonSlotName =

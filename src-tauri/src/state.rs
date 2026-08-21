@@ -1,7 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
-use tauri::Manager;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
@@ -100,10 +99,8 @@ impl LauncherState {
         }
     }
 
-    pub fn get_path(app_handle: &tauri::AppHandle) -> PathBuf {
-        let mut path = app_handle.path().app_config_dir().unwrap();
-        path.push("launcher_state.json");
-        path
+    pub fn get_path(_app_handle: &tauri::AppHandle) -> PathBuf {
+        crate::minecraft::versions::get_minecraft_dir().join("launcher_state.json")
     }
 
     pub fn load(app_handle: &tauri::AppHandle) -> Self {

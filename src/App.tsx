@@ -68,7 +68,7 @@ const App = () => {
                 }
                 break;
               case "Finished":
-                setUpdateStatus(t("updater.downloaded"));
+                setUpdateStatus(t("updater.restarting"));
                 break;
             }
           });
@@ -104,12 +104,12 @@ const App = () => {
       clearInterval(memInterval);
     };
   }, [
+    t,
     fetchState,
     fetchProfiles,
     fetchVersions,
     fetchStartupTime,
     fetchAppMemory,
-    t,
   ]);
 
   useEffect(() => {

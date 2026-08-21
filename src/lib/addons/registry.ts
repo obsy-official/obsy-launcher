@@ -149,22 +149,29 @@ class AddonRegistry {
   public async runBeforeLaunchHooks(context: LaunchContext): Promise<boolean> {
     let isAborted = false;
     let abortReason = "";
+    let abortingAddon = "";
 
     context.abort = (reason: string) => {
       isAborted = true;
       abortReason = reason;
     };
 
+    const allHooks: {
+      addonId: string;
+      hook: (ctx: LaunchContext) => Promise<void> | void;
+    }[] = [];
     for (const [addonId, hooks] of this.beforeLaunchHooks.entries()) {
       for (const hook of hooks) {
+        allHooks.push({ addonId, hook });
+      }
+    }
+
+    await Promise.allSettled(
+      allHooks.map(async ({ addonId, hook }) => {
         try {
           await hook(context);
-          if (isAborted) {
-            addGameLog(
-              "error",
-              `[LaunchAborted] Addon '${addonId}' stopped game launch: ${abortReason}`,
-            );
-            return false;
+          if (isAborted && !abortingAddon) {
+            abortingAddon = addonId;
           }
         } catch (err) {
           console.error(
@@ -176,7 +183,15 @@ class AddonRegistry {
             `[Addon:${addonId}] Error in onBeforeLaunch: ${err}`,
           );
         }
-      }
+      }),
+    );
+
+    if (isAborted) {
+      addGameLog(
+        "error",
+        `[LaunchAborted] Addon '${abortingAddon || "Unknown"}' stopped game launch: ${abortReason}`,
+      );
+      return false;
     }
 
     return true;
@@ -304,11 +319,17 @@ class AddonRegistry {
           );
           const state = useLauncherStore.getState();
           if (!state.state?.selectedProfileId) return null;
-          return (
+          const prof =
             state.profiles.find(
               (p) => p.id === state.state?.selectedProfileId,
-            ) ?? null
-          );
+            ) ?? null;
+          if (!prof) return null;
+          // Redact sensitive authentication tokens from addon API
+          return {
+            ...prof,
+            access_token: undefined,
+            refresh_token: undefined,
+          };
         },
         getSelectedVersion: () => {
           this.assertPermission(

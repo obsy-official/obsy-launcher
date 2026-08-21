@@ -6,7 +6,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import type { AddonManifest, AddonPermission } from "@/lib/addons/types";
+import {
+  type AddonManifest,
+  type AddonPermission,
+  getAddonTrustLevel,
+} from "@/lib/addons/types";
 import {
   ShieldCheck,
   ShieldAlert,
@@ -80,10 +84,8 @@ export const AddonSecurityReviewModal: React.FC<
 
   if (!manifest) return null;
 
-  const isVerified =
-    manifest.author === "Obsy Team" ||
-    manifest.author === "Obsy Design Studio" ||
-    manifest.author === "Obsy QA Team";
+  const trustLevel = getAddonTrustLevel(manifest);
+  const isVerified = trustLevel !== "custom";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -92,13 +94,17 @@ export const AddonSecurityReviewModal: React.FC<
           <div className="flex items-center gap-3">
             <div
               className={`flex h-10 w-10 items-center justify-center rounded-xl border ${
-                isVerified
+                trustLevel === "official"
                   ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
-                  : "border-amber-500/30 bg-amber-500/10 text-amber-400"
+                  : trustLevel === "community"
+                    ? "border-sky-500/30 bg-sky-500/10 text-sky-400"
+                    : "border-amber-500/30 bg-amber-500/10 text-amber-400"
               }`}
             >
-              {isVerified ? (
+              {trustLevel === "official" ? (
                 <ShieldCheck className="h-5 w-5" />
+              ) : trustLevel === "community" ? (
+                <CheckCircle2 className="h-5 w-5" />
               ) : (
                 <ShieldAlert className="h-5 w-5" />
               )}
@@ -106,15 +112,31 @@ export const AddonSecurityReviewModal: React.FC<
             <div>
               <DialogTitle className="flex items-center gap-2 text-base font-bold">
                 <span>{t("addons.securityTitle")}</span>
-                {isVerified && (
+                {trustLevel === "official" && (
                   <span className="flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold text-emerald-400">
+                    <ShieldCheck className="h-3 w-3" />
+                    <span>{t("addons.trustBadge.official")}</span>
+                  </span>
+                )}
+                {trustLevel === "community" && (
+                  <span className="flex items-center gap-1 rounded-full border border-sky-500/30 bg-sky-500/15 px-2 py-0.5 text-[10px] font-semibold text-sky-400">
                     <CheckCircle2 className="h-3 w-3" />
-                    <span>{t("addons.verified")}</span>
+                    <span>{t("addons.trustBadge.community")}</span>
+                  </span>
+                )}
+                {trustLevel === "custom" && (
+                  <span className="flex items-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/15 px-2 py-0.5 text-[10px] font-semibold text-amber-400">
+                    <ShieldAlert className="h-3 w-3" />
+                    <span>{t("addons.trustBadge.custom")}</span>
                   </span>
                 )}
               </DialogTitle>
               <p className="text-muted-foreground text-xs">
-                {t("addons.securitySubtitle")}
+                {trustLevel === "official"
+                  ? t("addons.trustLevels.official")
+                  : trustLevel === "community"
+                    ? t("addons.trustLevels.community")
+                    : t("addons.securitySubtitle")}
               </p>
             </div>
           </div>

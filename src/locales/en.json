@@ -28,20 +28,35 @@
       "microsoftLoginError": "Authentication failed",
       "username": "Username",
       "enterNickname": "Enter your nickname",
-      "cancel": "Cancel",
       "add": "Add",
       "addProfileTitle": "Add Profile",
       "deleteTooltip": "Delete profile"
     },
     "version": {
-      "selectVersion": "Select version",
+      "selectVersion": "Select Version",
       "noVersions": "No versions available",
-      "openFolder": "Open version folder",
-      "deleteInstance": "Delete instance",
+      "openFolder": "Open Instance Folder",
+      "deleteInstance": "Delete Instance",
       "confirmDelete": "Are you sure you want to delete this instance? This action cannot be undone.",
-      "cancel": "Cancel",
       "delete": "Delete",
-      "searchVersion": "Search version..."
+      "searchPlaceholder": "Search versions...",
+      "noVersionsFound": "No versions found",
+      "installed": "Installed Instances",
+      "releases": "Official Releases",
+      "snapshots": "Snapshots & Others",
+      "createInstance": "Create Instance",
+      "createInstanceTitle": "Create New Instance",
+      "createInstanceDesc": "Choose Minecraft version and mod loader for isolated gameplay.",
+      "instanceName": "Instance Name",
+      "instanceNamePlaceholder": "e.g. Fabric 1.21.4",
+      "minecraftVersion": "Minecraft Version",
+      "loader": "Mod Loader",
+      "loaderFabric": "Fabric (Recommended)",
+      "loaderNeoForge": "NeoForge (Modern Forge)",
+      "loaderForge": "Forge (Classic)",
+      "loaderQuilt": "Quilt",
+      "loaderVanilla": "Vanilla (Clean Game)",
+      "create": "Create"
     },
     "launch": {
       "play": "Play",
@@ -59,7 +74,8 @@
       "installing_assets": "Installing assets...",
       "installing_libraries": "Installing libraries...",
       "launching": "Starting Minecraft...",
-      "success": "Success!"
+      "success": "Success!",
+      "running": "Game is running"
     },
     "settings": {
       "title": "Settings",
@@ -107,12 +123,15 @@
       "install": "Install",
       "installed": "Installed",
       "reinstall": "Reinstall / Update",
-      "installFromFile": "Install .zip",
-      "installFromUrl": "Install from URL",
+      "installZip": "Install from .zip",
+      "installZipBtn": "From File",
+      "installUrl": "Install from URL",
+      "installUrlBtn": "From URL",
       "urlDialogTitle": "Install Addon from URL",
       "urlDialogDesc": "Enter a direct download link to an addon .zip archive (e.g. from GitHub Releases):",
       "urlInputPlaceholder": "https://example.com/addon.zip",
       "downloadingFromUrl": "Downloading archive from network...",
+      "downloadError": "Failed to download addon from URL",
       "refreshCatalog": "Refresh Catalog",
       "catalogRefreshed": "Catalog refreshed",
       "uninstall": "Uninstall addon",
@@ -122,6 +141,16 @@
       "updateAvailable": "Update available",
       "verifiedAuthor": "Official verified developer",
       "thirdPartyAuthor": "Third-party addon",
+      "trustLevels": {
+        "official": "Official Obsy Addon",
+        "community": "Verified Community Addon",
+        "custom": "Third-Party Addon (Unverified)"
+      },
+      "trustBadge": {
+        "official": "Obsy Official",
+        "community": "Community",
+        "custom": "Custom"
+      },
       "noInstalled": "No addons installed yet",
       "noInstalledDesc": "Explore the Store tab to add new features and integrations.",
       "securityTitle": "Install Addon",
@@ -178,6 +207,17 @@
           "desc": "Read and write files directly inside instance directories"
         }
       }
+    },
+    "crash": {
+      "detected": "Launch Issue Detected",
+      "actionSuccess": "Action applied: {{message}}",
+      "actionFailed": "Failed to apply action",
+      "diagnostics": "Smart Diagnostics",
+      "quickFixes": "Quick Fixes:"
+    },
+    "playtime": {
+      "title": "Playtime",
+      "total": "Total playtime: {{time}}"
     }
   }
 }

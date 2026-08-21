@@ -114,12 +114,13 @@ export const useLauncherStore = create<LauncherStore>((set, get) => ({
   appMemoryMb: null,
 
   fetchStartupTime: async () => {
+    if (get().startupTimeMs !== null) return;
     const ms = await safeInvoke<number>(
       "get_startup_time",
       undefined,
       Math.round(performance.now()),
     );
-    if (ms !== undefined) set({ startupTimeMs: ms });
+    if (ms !== undefined && ms > 0) set({ startupTimeMs: ms });
   },
 
   fetchAppMemory: async () => {

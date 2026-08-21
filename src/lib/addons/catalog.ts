@@ -1,4 +1,5 @@
 import type { AddonManifest } from "./types";
+import localCatalog from "../../../addons/catalog.json";
 
 export const DEFAULT_REMOTE_REGISTRY_URL =
   "https://raw.githubusercontent.com/obsy-official/obsy-launcher/main/addons/catalog.json";
@@ -6,18 +7,23 @@ export const DEFAULT_REMOTE_REGISTRY_URL =
 const CATALOG_STORAGE_KEY = "obsy:addons_catalog:v2";
 
 export function getCachedCatalog(): AddonManifest[] {
-  try {
-    const raw = localStorage.getItem(CATALOG_STORAGE_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) {
-        return parsed;
+  let list: AddonManifest[] = [];
+  if (import.meta.env.DEV) {
+    list = localCatalog as AddonManifest[];
+  } else {
+    try {
+      const raw = localStorage.getItem(CATALOG_STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          list = parsed;
+        }
       }
+    } catch (e) {
+      console.warn("[AddonCatalog] Failed to read cached catalog:", e);
     }
-  } catch (e) {
-    console.warn("[AddonCatalog] Failed to read cached catalog:", e);
   }
-  return [];
+  return list.map((item) => ({ ...item, verified: true }));
 }
 
 export function saveCachedCatalog(catalog: AddonManifest[]) {
@@ -31,6 +37,10 @@ export function saveCachedCatalog(catalog: AddonManifest[]) {
 export async function fetchRemoteCatalog(
   registryUrl: string = DEFAULT_REMOTE_REGISTRY_URL,
 ): Promise<{ addons: AddonManifest[]; fromCache: boolean }> {
+  if (import.meta.env.DEV) {
+    return { addons: localCatalog as AddonManifest[], fromCache: false };
+  }
+
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 8000);
@@ -48,8 +58,12 @@ export async function fetchRemoteCatalog(
         : data.addons || [];
 
       if (remoteAddons.length > 0) {
-        saveCachedCatalog(remoteAddons);
-        return { addons: remoteAddons, fromCache: false };
+        const verifiedAddons = remoteAddons.map((item) => ({
+          ...item,
+          verified: true,
+        }));
+        saveCachedCatalog(verifiedAddons);
+        return { addons: verifiedAddons, fromCache: false };
       }
     }
   } catch (err) {
@@ -60,11 +74,4 @@ export async function fetchRemoteCatalog(
   }
 
   return { addons: getCachedCatalog(), fromCache: true };
-}
-
-export function getAddonManifestById(
-  id: string,
-  catalog: AddonManifest[] = getCachedCatalog(),
-): AddonManifest | undefined {
-  return catalog.find((a) => a.id === id);
 }

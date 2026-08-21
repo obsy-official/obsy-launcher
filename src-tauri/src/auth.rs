@@ -3,7 +3,6 @@ use magic_crypt::{new_magic_crypt, MagicCryptTrait};
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
-use tauri::Manager;
 use uuid::Uuid;
 
 fn get_encryption_key(store_path: &PathBuf) -> String {
@@ -30,6 +29,15 @@ fn get_encryption_key(store_path: &PathBuf) -> String {
 
     let key = Uuid::new_v4().to_string() + &Uuid::new_v4().to_string();
     let _ = fs::write(&key_path, &key);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        if let Ok(metadata) = fs::metadata(&key_path) {
+            let mut perms = metadata.permissions();
+            perms.set_mode(0o600);
+            let _ = fs::set_permissions(&key_path, perms);
+        }
+    }
     key
 }
 
@@ -83,9 +91,8 @@ pub struct ProfileStore {
 }
 
 impl ProfileStore {
-    pub fn new(app_handle: &tauri::AppHandle) -> Self {
-        let mut path = app_handle.path().app_config_dir().unwrap();
-        path.push("profiles.json");
+    pub fn new(_app_handle: &tauri::AppHandle) -> Self {
+        let path = crate::minecraft::versions::get_minecraft_dir().join("profiles.json");
         Self { path }
     }
 
@@ -116,6 +123,15 @@ impl ProfileStore {
         let encrypted = mc.encrypt_str_to_base64(json_contents);
 
         fs::write(&self.path, encrypted).map_err(|e| e.to_string())?;
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            if let Ok(metadata) = fs::metadata(&self.path) {
+                let mut perms = metadata.permissions();
+                perms.set_mode(0o600);
+                let _ = fs::set_permissions(&self.path, perms);
+            }
+        }
         Ok(())
     }
 }

@@ -47,13 +47,89 @@ pub fn calculate_sha256(bytes: &[u8]) -> String {
     format!("{:x}", hasher.finalize())
 }
 
-fn sanitize_path(base: &Path, relative: &Path) -> Result<PathBuf, String> {
+static EMBEDDED_CATALOG_JSON: &str = include_str!("../../addons/catalog.json");
+
+pub fn is_verified_addon(id: &str, checksum: Option<&str>) -> bool {
+    if let Some(target_checksum) = checksum {
+        if let Ok(catalog) = serde_json::from_str::<Vec<serde_json::Value>>(EMBEDDED_CATALOG_JSON) {
+            if catalog.iter().any(|item| {
+                item.get("id").and_then(|v| v.as_str()) == Some(id)
+                    && item.get("checksum").and_then(|v| v.as_str()) == Some(target_checksum)
+            }) {
+                return true;
+            }
+        }
+    } else {
+        if let Ok(catalog) = serde_json::from_str::<Vec<serde_json::Value>>(EMBEDDED_CATALOG_JSON) {
+            if catalog
+                .iter()
+                .any(|item| item.get("id").and_then(|v| v.as_str()) == Some(id))
+            {
+                return true;
+            }
+        }
+        #[cfg(debug_assertions)]
+        {
+            if let Some(dev_src) = get_dev_addons_src_dir() {
+                return dev_src.join(id).exists();
+            }
+        }
+    }
+    false
+}
+
+pub fn sanitize_path(base: &Path, relative: &Path) -> Result<PathBuf, String> {
+    if relative.is_absolute() {
+        return Err("Invalid file path: absolute path not allowed".to_string());
+    }
+    for component in relative.components() {
+        match component {
+            std::path::Component::ParentDir
+            | std::path::Component::RootDir
+            | std::path::Component::Prefix(_) => {
+                return Err("Invalid file path: path traversal detected".to_string());
+            }
+            _ => {}
+        }
+    }
     let full = base.join(relative);
     // Prevent directory traversal attacks
     if full.starts_with(base) {
         Ok(full)
     } else {
         Err("Invalid file path: path traversal detected".to_string())
+    }
+}
+
+pub fn safe_zip_extract_path(target_dir: &Path, rel_name: &str) -> Result<PathBuf, String> {
+    let rel_path = Path::new(rel_name);
+    if rel_path.is_absolute() {
+        return Err(format!(
+            "Invalid archive entry: absolute path '{}'",
+            rel_name
+        ));
+    }
+    for component in rel_path.components() {
+        match component {
+            std::path::Component::ParentDir
+            | std::path::Component::RootDir
+            | std::path::Component::Prefix(_) => {
+                return Err(format!(
+                    "Path traversal detected in archive entry: '{}'",
+                    rel_name
+                ));
+            }
+            _ => {}
+        }
+    }
+    let outpath = target_dir.join(rel_path);
+    if outpath.starts_with(target_dir) {
+        Ok(outpath)
+    } else {
+        Err(format!(
+            "Archive entry '{}' escapes target directory",
+            rel_name
+        ))
     }
 }
 
@@ -103,12 +179,27 @@ pub fn inspect_addon_archive(archive_bytes: Vec<u8>) -> Result<AddonDiskInfo, St
         .map_err(|e| format!("Failed to parse addon manifest: {}", e))?;
 
     info.size_bytes = archive_bytes.len() as u64;
-    info.checksum = Some(sha256_hash);
-    info.verified = info.author == "Obsy Team"
-        || info.author == "Obsy Design Studio"
-        || info.author == "Obsy QA Team";
+    info.checksum = Some(sha256_hash.clone());
+    info.verified = is_verified_addon(&info.id, Some(&sha256_hash));
 
     Ok(info)
+}
+
+fn get_dev_addons_src_dir() -> Option<PathBuf> {
+    #[cfg(debug_assertions)]
+    {
+        if let Ok(cwd) = std::env::current_dir() {
+            if cwd.join("addons").join("src").exists() {
+                return Some(cwd.join("addons").join("src"));
+            }
+            if let Some(parent) = cwd.parent() {
+                if parent.join("addons").join("src").exists() {
+                    return Some(parent.join("addons").join("src"));
+                }
+            }
+        }
+    }
+    None
 }
 
 #[tauri::command]
@@ -140,9 +231,7 @@ pub fn get_installed_addons_from_disk() -> Result<Vec<AddonDiskInfo>, String> {
                     if info.size_bytes == 0 {
                         info.size_bytes = get_dir_size(&path);
                     }
-                    info.verified = info.author == "Obsy Team"
-                        || info.author == "Obsy Design Studio"
-                        || info.author == "Obsy QA Team";
+                    info.verified = is_verified_addon(&info.id, info.checksum.as_deref());
                     list.push(info);
                 }
             }
@@ -154,6 +243,28 @@ pub fn get_installed_addons_from_disk() -> Result<Vec<AddonDiskInfo>, String> {
 
 #[tauri::command]
 pub fn read_addon_file(addon_id: String, file_name: String) -> Result<String, String> {
+    crate::validate_safe_id(&addon_id)?;
+
+    // 1. In dev mode, prioritize reading directly from workspace addons/src/<addon_id>/
+    if let Some(dev_src) = get_dev_addons_src_dir() {
+        let dev_addon_dir = dev_src.join(&addon_id);
+        if dev_addon_dir.exists() {
+            if let Ok(target_path) = sanitize_path(&dev_addon_dir, Path::new(&file_name)) {
+                if target_path.exists() {
+                    return fs::read_to_string(&target_path).map_err(|e| {
+                        format!("Failed to read dev addon file '{}': {}", file_name, e)
+                    });
+                }
+                let dist_path = dev_addon_dir.join("dist").join(&file_name);
+                if dist_path.exists() {
+                    return fs::read_to_string(&dist_path).map_err(|e| {
+                        format!("Failed to read dev addon dist file '{}': {}", file_name, e)
+                    });
+                }
+            }
+        }
+    }
+
     let addons_dir = get_addons_dir();
     let addon_dir = addons_dir.join(&addon_id);
     if !addon_dir.exists() {
@@ -183,6 +294,7 @@ pub fn read_addon_file(addon_id: String, file_name: String) -> Result<String, St
 
 #[tauri::command]
 pub fn uninstall_addon_files(addon_id: String) -> Result<(), String> {
+    crate::validate_safe_id(&addon_id)?;
     let addons_dir = get_addons_dir();
     let addon_dir = addons_dir.join(&addon_id);
     if addon_dir.exists() {
@@ -240,6 +352,8 @@ pub fn install_addon_from_archive_bytes(
     let mut info: AddonDiskInfo = serde_json::from_str(&manifest_content)
         .map_err(|e| format!("Failed to parse addon manifest: {}", e))?;
 
+    crate::validate_safe_id(&info.id)?;
+
     let addons_dir = get_addons_dir();
     let target_dir = addons_dir.join(&info.id);
 
@@ -248,7 +362,7 @@ pub fn install_addon_from_archive_bytes(
     }
     fs::create_dir_all(&target_dir).map_err(|e| format!("Failed to create directory: {}", e))?;
 
-    // Extract all files
+    // Extract all files safely
     for i in 0..zip.len() {
         let mut file = zip
             .by_index(i)
@@ -265,7 +379,7 @@ pub fn install_addon_from_archive_bytes(
             continue;
         }
 
-        let outpath = target_dir.join(rel_name);
+        let outpath = safe_zip_extract_path(&target_dir, rel_name)?;
         if let Some(parent) = outpath.parent() {
             let _ = fs::create_dir_all(parent);
         }
@@ -281,16 +395,37 @@ pub fn install_addon_from_archive_bytes(
         || target_dir.join("index.css").exists()
         || target_dir.join("dist/index.css").exists();
     info.size_bytes = get_dir_size(&target_dir);
-    info.checksum = Some(computed_hash);
-    info.verified = info.author == "Obsy Team"
-        || info.author == "Obsy Design Studio"
-        || info.author == "Obsy QA Team";
+    info.checksum = Some(computed_hash.clone());
+    info.verified = is_verified_addon(&info.id, Some(&computed_hash));
 
     Ok(info)
 }
 
 #[tauri::command]
 pub async fn download_addon_archive_bytes(download_url: String) -> Result<Vec<u8>, String> {
+    #[cfg(debug_assertions)]
+    {
+        if let Some(filename) = download_url.split('/').last() {
+            if filename.ends_with(".zip") {
+                if let Ok(cwd) = std::env::current_dir() {
+                    let candidates = [
+                        cwd.join("addons").join("dist").join(filename),
+                        cwd.parent()
+                            .map(|p| p.join("addons").join("dist").join(filename))
+                            .unwrap_or_default(),
+                    ];
+                    for c in candidates {
+                        if c.exists() {
+                            if let Ok(bytes) = fs::read(&c) {
+                                return Ok(bytes);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     let client = reqwest::Client::builder()
         .user_agent("Obsy-Launcher/AddonDownloader")
         .build()
@@ -324,6 +459,7 @@ pub async fn download_and_install_addon(
     download_url: String,
     expected_checksum: Option<String>,
 ) -> Result<AddonDiskInfo, String> {
+    crate::validate_safe_id(&addon_id)?;
     let client = reqwest::Client::builder()
         .user_agent("Obsy-Launcher/AddonInstaller")
         .build()
@@ -365,6 +501,7 @@ pub async fn download_and_install_addon(
         .map_err(|e| format!("Failed to save index.js: {}", e))?;
 
     let computed_hash = calculate_sha256(&bytes);
+    let is_ver = is_verified_addon(&addon_id, Some(&computed_hash));
     let info = AddonDiskInfo {
         id: addon_id.clone(),
         name: addon_id,
@@ -380,7 +517,7 @@ pub async fn download_and_install_addon(
         has_js: true,
         has_css: false,
         checksum: Some(computed_hash),
-        verified: false,
+        verified: is_ver,
     };
 
     let manifest_json = serde_json::to_string_pretty(&info).unwrap_or_default();
@@ -396,6 +533,12 @@ pub fn save_local_addon(
     js_content: String,
     css_content: Option<String>,
 ) -> Result<AddonDiskInfo, String> {
+    crate::validate_safe_id(&addon_id)?;
+    let mut info: AddonDiskInfo = serde_json::from_str(&manifest_json)
+        .map_err(|e| format!("Invalid manifest JSON: {}", e))?;
+
+    crate::validate_safe_id(&info.id)?;
+
     let addons_dir = get_addons_dir();
     let target_dir = addons_dir.join(&addon_id);
     fs::create_dir_all(&target_dir)
@@ -411,14 +554,11 @@ pub fn save_local_addon(
         let _ = fs::write(target_dir.join("style.css"), css);
     }
 
-    let mut info: AddonDiskInfo = serde_json::from_str(&manifest_json)
-        .map_err(|e| format!("Invalid manifest JSON: {}", e))?;
-
     info.has_js = true;
     info.has_css = target_dir.join("style.css").exists();
     info.size_bytes = get_dir_size(&target_dir);
     info.checksum = None;
-    info.verified = info.author == "Obsy Team" || info.author == "Obsy Design Studio";
+    info.verified = is_verified_addon(&info.id, None);
 
     Ok(info)
 }

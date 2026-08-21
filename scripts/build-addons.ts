@@ -79,11 +79,31 @@ for (const addonId of addonDirs) {
   const stats = fs.statSync(zipOutput);
   const hash = crypto.createHash("sha256").update(fileBuffer).digest("hex");
 
-  manifest.sizeBytes = stats.size;
-  manifest.checksum = hash;
-  manifest.downloadUrl = `https://raw.githubusercontent.com/obsy-official/obsy-launcher/main/addons/dist/${addonId}.zip`;
+  // If dev .obsy/addons directory exists, sync files directly for instant dev testing
+  const devAddonsDir = path.join(rootDir, "src-tauri", ".obsy", "addons");
+  if (fs.existsSync(devAddonsDir)) {
+    const devAddonTarget = path.join(devAddonsDir, addonId);
+    fs.mkdirSync(devAddonTarget, { recursive: true });
+    fs.copyFileSync(manifestPath, path.join(devAddonTarget, "addon.json"));
+    const jsEntry = path.join(addonDir, "index.js");
+    if (fs.existsSync(jsEntry)) {
+      fs.copyFileSync(jsEntry, path.join(devAddonTarget, "index.js"));
+    }
+    const cssEntry = path.join(addonDir, "style.css");
+    if (fs.existsSync(cssEntry)) {
+      fs.copyFileSync(cssEntry, path.join(devAddonTarget, "style.css"));
+    }
+  }
 
-  catalogList.push(manifest);
+  // In catalog.json, automatically attach archive sizeBytes, checksum, and downloadUrl
+  const catalogItem = {
+    ...manifest,
+    sizeBytes: stats.size,
+    checksum: hash,
+    downloadUrl: `https://raw.githubusercontent.com/obsy-official/obsy-launcher/main/addons/dist/${addonId}.zip`,
+  };
+
+  catalogList.push(catalogItem);
   console.log(
     `✓ Built ${addonId}.zip (${stats.size} bytes, sha256: ${hash.slice(0, 8)}...)`,
   );

@@ -6,7 +6,6 @@
     "description": "Интерактивная 3D-модель персонажа с анимацией, гардеробом скинов и установкой плащей.",
     "author": "Obsy Team",
     "category": "customization",
-    "sizeBytes": 136447,
     "permissions": ["ui:slots", "storage:local", "game:profiles"],
     "tags": [
       "skin",
@@ -34,7 +33,8 @@
         "default": 160
       }
     },
-    "checksum": "419746c54716210cdcb8ab34fe1e16aba40159939417c513f3d482720411477b",
+    "sizeBytes": 136419,
+    "checksum": "a94caf582b190a8413ce0b154fa9f024c359a849b0c2e589add6fe3d1e779700",
     "downloadUrl": "https://raw.githubusercontent.com/obsy-official/obsy-launcher/main/addons/dist/skin-3d-viewer.zip"
   },
   {
@@ -42,12 +42,12 @@
     "name": "Modrinth Explorer",
     "version": "2.8.0",
     "description": "Каталог модов, ресурспаков и шейдеров от Modrinth с быстрой установкой в один клик.",
-    "author": "Modrinth Fanatics",
+    "author": "Obsy Team",
     "category": "utility",
-    "sizeBytes": 7119,
     "permissions": ["fs:instances", "ui:slots", "network:fetch"],
     "tags": ["mods", "modrinth", "shaders", "resourcepacks"],
-    "checksum": "c1fb2a3114872c55e59b37eb3db4908b3c0d992b4f103261a39cac3fb53e4ec0",
+    "sizeBytes": 7145,
+    "checksum": "99b0ad0bd355f5bd402fc2dff05a3097929e5de6f8ccfcd0bbdf723af83a16b5",
     "downloadUrl": "https://raw.githubusercontent.com/obsy-official/obsy-launcher/main/addons/dist/modrinth-browser.zip"
   },
   {
@@ -57,7 +57,6 @@
     "description": "Отображает ваш статус в Discord: версию Minecraft, выбранный профиль и время игры в лаунчере.",
     "author": "Obsy Team",
     "category": "integration",
-    "sizeBytes": 2857,
     "permissions": [
       "game:lifecycle",
       "game:profiles",
@@ -85,7 +84,8 @@
         "default": "Играет в Obsy Launcher"
       }
     },
-    "checksum": "92d75045495fee1d2f279c1fcb6d3eeedca01a881d8bdf1d1a8ab21942e3f1d5",
+    "sizeBytes": 2825,
+    "checksum": "27b32ed21091614bdb90bb4cb258021acc675dcfdc1910cf6dfb43a47bd0b58d",
     "downloadUrl": "https://raw.githubusercontent.com/obsy-official/obsy-launcher/main/addons/dist/discord-rpc.zip"
   }
 ]

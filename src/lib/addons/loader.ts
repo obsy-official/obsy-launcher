@@ -6,7 +6,6 @@ export async function loadAddonFromDisk(
   addonId: string,
 ): Promise<ObsyAddon | null> {
   try {
-    // 1. Read JavaScript bundle
     const jsCode = await invoke<string>("read_addon_file", {
       addonId,
       fileName: "index.js",
@@ -19,7 +18,6 @@ export async function loadAddonFromDisk(
       return null;
     }
 
-    // 2. Optional CSS injection
     try {
       const cssCode = await invoke<string>("read_addon_file", {
         addonId,
@@ -30,10 +28,9 @@ export async function loadAddonFromDisk(
         injectAddonStyle(addonId, cssCode);
       }
     } catch {
-      // CSS is optional
+      // CSS is optional for addons without custom styles
     }
 
-    // 3. Try Data URI dynamic import
     try {
       const dataUri =
         "data:text/javascript;charset=utf-8," + encodeURIComponent(jsCode);
@@ -50,7 +47,6 @@ export async function loadAddonFromDisk(
       );
     }
 
-    // 4. Try Blob URL dynamic import
     try {
       const blob = new Blob([jsCode], { type: "text/javascript" });
       const blobUrl = URL.createObjectURL(blob);
@@ -66,20 +62,16 @@ export async function loadAddonFromDisk(
       }
     } catch (blobErr) {
       console.warn(
-        `[AddonLoader] Blob import failed for '${addonId}', trying Function eval:`,
+        `[AddonLoader] Blob import failed for '${addonId}':`,
         blobErr,
       );
     }
 
-    // 5. Universal Function Evaluation Fallback (bypasses all WebKit/Tauri Blob/MIME sandbox restrictions)
     try {
-      let cleanCode = jsCode.trim();
-      if (cleanCode.includes("export default")) {
-        cleanCode = cleanCode.replace(/export\s+default\s+/, "return ");
-      }
-
-      const factory = new Function(cleanCode);
-      const addonInstance = factory();
+      const base64Code = btoa(unescape(encodeURIComponent(jsCode)));
+      const base64Uri = `data:text/javascript;base64,${base64Code}`;
+      const module = await import(/* @vite-ignore */ base64Uri);
+      const addonInstance: ObsyAddon = module.default || module;
 
       if (
         addonInstance &&
@@ -87,10 +79,10 @@ export async function loadAddonFromDisk(
       ) {
         return addonInstance;
       }
-    } catch (fnErr) {
+    } catch (b64Err) {
       console.error(
-        `[AddonLoader] Function evaluation failed for '${addonId}':`,
-        fnErr,
+        `[AddonLoader] Base64 import failed for '${addonId}':`,
+        b64Err,
       );
     }
 
