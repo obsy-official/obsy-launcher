@@ -12,7 +12,7 @@
     "preview": "vite preview",
     "tauri": "tauri",
     "format": "prettier --write . && cd src-tauri && cargo fmt",
-    "prepare": "husky",
+    "prepare": "lefthook install",
     "doctor": "npx react-doctor@latest"
   },
   "dependencies": {
@@ -47,15 +47,10 @@
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.3",
     "esbuild": "^0.28.1",
-    "husky": "^9.1.7",
-    "lint-staged": "^17.3.0",
+    "lefthook": "^2.1.12",
     "prettier": "^3.9.5",
     "prettier-plugin-tailwindcss": "^0.8.0",
     "typescript": "~6.0.2",
     "vite": "^8.1.1"
-  },
-  "lint-staged": {
-    "*.{js,jsx,ts,tsx,css,json,md}": "prettier --write",
-    "src-tauri/**/*.rs": "rustfmt --edition 2021"
   }
 }

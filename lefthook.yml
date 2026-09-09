@@ -1,0 +1,10 @@
+pre-commit:
+  commands:
+    prettier:
+      glob: "*.{js,jsx,ts,tsx,css,json,md}"
+      run: bunx prettier --write {staged_files}
+      stage_fixed: true
+    rustfmt:
+      glob: "src-tauri/**/*.rs"
+      run: rustfmt --edition 2021 {staged_files}
+      stage_fixed: true
