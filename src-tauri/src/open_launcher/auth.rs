@@ -33,13 +33,7 @@ impl Auth {
 
 impl Default for Auth {
     fn default() -> Self {
-        Self {
-            access_token: "636da1d35e803b00aae0fcd8333f9234".to_string(),
-            uuid: "636da1d35e803b00aae0fcd8333f9234".to_string(),
-            username: "Player".to_string(),
-            user_type: "mojang".to_string(),
-            user_properties: "{}".to_string(),
-        }
+        OfflineAuth::new("Player")
     }
 }
 
