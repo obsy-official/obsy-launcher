@@ -20,6 +20,7 @@ jobs:
             args: "--target x86_64-apple-darwin"
           - platform: "ubuntu-22.04"
             args: ""
+            tauriScript: "./scripts/tauri-build-linux.sh"
           - platform: "windows-latest"
             args: ""
 
@@ -70,4 +71,5 @@ jobs:
           prerelease: false
           includeUpdaterJson: true
           updaterJsonPreferNsis: true
+          tauriScript: ${{ matrix.tauriScript }}
           args: ${{ matrix.args }}
