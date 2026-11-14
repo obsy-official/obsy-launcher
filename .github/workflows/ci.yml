@@ -29,6 +29,9 @@ jobs:
       - name: Install dependencies
         run: bun install
 
+      - name: Check formatting
+        run: bunx prettier --check src
+
       - name: Build frontend
         run: bun run build
 
@@ -52,6 +55,9 @@ jobs:
 
       - name: Cargo check
         run: cargo check --manifest-path src-tauri/Cargo.toml
+
+      - name: Cargo test
+        run: cargo test --lib --manifest-path src-tauri/Cargo.toml
 
   gitleaks:
     name: Secret scanning

@@ -114,7 +114,7 @@ impl ProfileStore {
 
     pub fn save(&self, profiles: &[Profile]) -> Result<(), String> {
         if let Some(parent) = self.path.parent() {
-            let _ = fs::create_dir_all(parent);
+            fs::create_dir_all(parent).map_err(|e| e.to_string())?;
         }
         let json_contents = serde_json::to_string_pretty(profiles).map_err(|e| e.to_string())?;
 

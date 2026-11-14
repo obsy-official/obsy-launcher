@@ -48,31 +48,39 @@ pub fn calculate_sha256(bytes: &[u8]) -> String {
 }
 
 static EMBEDDED_CATALOG_JSON: &str = include_str!("../../addons/catalog.json");
+static EMBEDDED_CATALOG: std::sync::OnceLock<Vec<serde_json::Value>> = std::sync::OnceLock::new();
+
+fn get_embedded_catalog() -> &'static [serde_json::Value] {
+    EMBEDDED_CATALOG
+        .get_or_init(|| serde_json::from_str(EMBEDDED_CATALOG_JSON).unwrap_or_default())
+        .as_slice()
+}
+
+pub fn get_embedded_catalog_checksum(id: &str) -> Option<&'static str> {
+    get_embedded_catalog()
+        .iter()
+        .find(|item| item.get("id").and_then(|v| v.as_str()) == Some(id))
+        .and_then(|item| item.get("checksum").and_then(|v| v.as_str()))
+}
 
 pub fn is_verified_addon(id: &str, checksum: Option<&str>) -> bool {
+    let catalog = get_embedded_catalog();
     if let Some(target_checksum) = checksum {
-        if let Ok(catalog) = serde_json::from_str::<Vec<serde_json::Value>>(EMBEDDED_CATALOG_JSON) {
-            if catalog.iter().any(|item| {
-                item.get("id").and_then(|v| v.as_str()) == Some(id)
-                    && item.get("checksum").and_then(|v| v.as_str()) == Some(target_checksum)
-            }) {
-                return true;
-            }
-        }
-    } else {
-        if let Ok(catalog) = serde_json::from_str::<Vec<serde_json::Value>>(EMBEDDED_CATALOG_JSON) {
-            if catalog
-                .iter()
-                .any(|item| item.get("id").and_then(|v| v.as_str()) == Some(id))
-            {
-                return true;
-            }
-        }
-        #[cfg(debug_assertions)]
-        {
-            if let Some(dev_src) = get_dev_addons_src_dir() {
-                return dev_src.join(id).exists();
-            }
+        return catalog.iter().any(|item| {
+            item.get("id").and_then(|v| v.as_str()) == Some(id)
+                && item.get("checksum").and_then(|v| v.as_str()) == Some(target_checksum)
+        });
+    }
+    if catalog
+        .iter()
+        .any(|item| item.get("id").and_then(|v| v.as_str()) == Some(id))
+    {
+        return true;
+    }
+    #[cfg(debug_assertions)]
+    {
+        if let Some(dev_src) = get_dev_addons_src_dir() {
+            return dev_src.join(id).exists();
         }
     }
     false

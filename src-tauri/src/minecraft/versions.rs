@@ -72,26 +72,45 @@ pub fn get_minecraft_dir() -> PathBuf {
         }
     }
 
-    if let Ok(exe_path) = std::env::current_exe() {
-        if let Some(exe_dir) = exe_path.parent() {
-            #[cfg(target_os = "macos")]
-            {
-                let path_str = exe_dir.to_string_lossy();
-                if path_str.contains(".app/Contents/MacOS") {
-                    let mut path = dirs::data_dir().unwrap_or_else(|| PathBuf::from("."));
-                    path.push("obsy");
-                    return path;
+    #[cfg(target_os = "linux")]
+    {
+        return dirs::data_dir()
+            .unwrap_or_else(|| PathBuf::from("."))
+            .join("obsy");
+    }
+
+    #[cfg(not(target_os = "linux"))]
+    {
+        if let Ok(exe_path) = std::env::current_exe() {
+            if let Some(exe_dir) = exe_path.parent() {
+                #[cfg(target_os = "macos")]
+                {
+                    let path_str = exe_dir.to_string_lossy();
+                    if path_str.contains(".app/Contents/MacOS") {
+                        return dirs::data_dir()
+                            .unwrap_or_else(|| PathBuf::from("."))
+                            .join("obsy");
+                    }
                 }
+                #[cfg(target_os = "windows")]
+                {
+                    let path_lower = exe_dir.to_string_lossy().to_lowercase();
+                    if path_lower.contains("program files") {
+                        return dirs::data_dir()
+                            .unwrap_or_else(|| PathBuf::from("."))
+                            .join("obsy");
+                    }
+                }
+                return exe_dir.join(".obsy");
             }
-            return exe_dir.join(".obsy");
         }
-    }
 
-    if let Ok(cwd) = std::env::current_dir() {
-        return cwd.join(".obsy");
-    }
+        if let Ok(cwd) = std::env::current_dir() {
+            return cwd.join(".obsy");
+        }
 
-    PathBuf::from(".obsy")
+        PathBuf::from(".obsy")
+    }
 }
 
 pub fn get_local_versions() -> Result<Vec<MinecraftVersion>, String> {
