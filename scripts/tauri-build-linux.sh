@@ -54,6 +54,10 @@ if [[ ! -x "$appimagetool_bin" ]]; then
 fi
 
 rm -f "$appimage_abs"
+chmod -R a+rX "$squashfs_dir"
+if [[ -f "$squashfs_dir/AppRun" ]]; then
+  chmod a+rx "$squashfs_dir/AppRun"
+fi
 ARCH=x86_64 APPIMAGE_EXTRACT_AND_RUN=1 "$appimagetool_bin" --no-appstream "$squashfs_dir" "$appimage_abs"
 
 if [[ -n "${TAURI_SIGNING_PRIVATE_KEY:-}" ]]; then
