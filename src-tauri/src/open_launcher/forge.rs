@@ -222,6 +222,13 @@ pub(crate) async fn post_process(
 
         // Run the processor
         let mut command = Command::new(java_executable);
+        for (var, orig) in crate::appimage_env_overrides() {
+            if let Some(val) = orig {
+                command.env(var, val);
+            } else {
+                command.env_remove(var);
+            }
+        }
         command.arg("-cp");
         command.arg(get_libraries_classpath(game_dir, &classpath).join(
             match std::env::consts::OS {

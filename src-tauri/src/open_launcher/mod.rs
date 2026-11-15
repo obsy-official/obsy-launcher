@@ -673,6 +673,13 @@ impl Launcher {
 
         // Command
         let mut command = Command::new(&self.java_executable);
+        for (var, orig) in crate::appimage_env_overrides() {
+            if let Some(val) = orig {
+                command.env(var, val);
+            } else {
+                command.env_remove(var);
+            }
+        }
         command.args(final_args);
         command.current_dir(actual_game_dir);
 

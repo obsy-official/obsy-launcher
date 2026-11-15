@@ -116,6 +116,63 @@ pub struct AppState {
     pub is_game_running: std::sync::atomic::AtomicBool,
 }
 
+pub fn appimage_env_overrides() -> Vec<(&'static str, Option<std::ffi::OsString>)> {
+    #[cfg(target_os = "linux")]
+    if std::env::var_os("APPIMAGE").is_some() || std::env::var_os("APPDIR").is_some() {
+        return [
+            "LD_LIBRARY_PATH",
+            "XDG_DATA_DIRS",
+            "GIO_EXTRA_MODULES",
+            "GTK_PATH",
+            "GDK_PIXBUF_MODULE_FILE",
+            "GDK_PIXBUF_MODULEDIR",
+        ]
+        .into_iter()
+        .map(|var| {
+            let orig_key = format!("{}_ORIG", var);
+            (var, std::env::var_os(&orig_key))
+        })
+        .collect();
+    }
+    Vec::new()
+}
+
+pub fn open_path_or_url(app: &tauri::AppHandle, target: &str, is_url: bool) -> Result<(), String> {
+    #[cfg(target_os = "linux")]
+    if std::env::var_os("APPIMAGE").is_some() || std::env::var_os("APPDIR").is_some() {
+        let mut cmd = std::process::Command::new("xdg-open");
+        cmd.arg(target);
+        for (var, orig) in appimage_env_overrides() {
+            if let Some(val) = orig {
+                cmd.env(var, val);
+            } else {
+                cmd.env_remove(var);
+            }
+        }
+        cmd.spawn().map_err(|e| e.to_string())?;
+        return Ok(());
+    }
+
+    use tauri_plugin_opener::OpenerExt;
+    if is_url {
+        app.opener()
+            .open_url(target, None::<&str>)
+            .map_err(|e| e.to_string())
+    } else {
+        app.opener()
+            .open_path(target, None::<&str>)
+            .map_err(|e| e.to_string())
+    }
+}
+
+#[tauri::command]
+fn open_external_url(url: String, app: tauri::AppHandle) -> Result<(), String> {
+    if !url.starts_with("https://") && !url.starts_with("http://") {
+        return Err("Invalid URL scheme".to_string());
+    }
+    open_path_or_url(&app, &url, true)
+}
+
 pub fn validate_safe_id(id: &str) -> Result<(), String> {
     if id.is_empty()
         || id.contains("..")
@@ -204,6 +261,7 @@ pub fn run() {
             commands::diagnostics::get_playtime_summary,
             commands::diagnostics::get_last_crash_diagnostics,
             commands::diagnostics::apply_crash_action,
+            open_external_url,
             addons::get_installed_addons_from_disk,
             addons::read_addon_file,
             addons::uninstall_addon_files,

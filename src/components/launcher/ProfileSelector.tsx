@@ -22,7 +22,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useMsaAuth } from "@/lib/useMsaAuth";
 import { useLauncherStore } from "@/state";
-import { openUrl } from "@tauri-apps/plugin-opener";
+import { invoke } from "@tauri-apps/api/core";
 import { AnimatePresence, m } from "framer-motion";
 import {
   ChevronsUpDown,
@@ -272,7 +272,11 @@ export const ProfileSelector = () => {
                           <Button
                             variant="outline"
                             className="hover:bg-accent mt-2 w-full transition-colors"
-                            onClick={() => openUrl(msaData.verification_uri)}
+                            onClick={() =>
+                              invoke("open_external_url", {
+                                url: msaData.verification_uri,
+                              })
+                            }
                           >
                             <ExternalLink className="mr-2 h-4 w-4" />
                             {t("profile.microsoftLoginLink")}

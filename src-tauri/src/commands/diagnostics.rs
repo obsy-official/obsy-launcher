@@ -43,18 +43,12 @@ pub async fn apply_crash_action(
             Ok("Reset Java configuration to auto-managed".to_string())
         }
         "open-folder" => {
-            use tauri_plugin_opener::OpenerExt;
             let mc_dir = crate::minecraft::versions::get_minecraft_dir();
-            app.opener()
-                .open_path(mc_dir.to_string_lossy().to_string(), None::<&str>)
-                .map_err(|e| e.to_string())?;
+            crate::open_path_or_url(&app, &mc_dir.to_string_lossy(), false)?;
             Ok("Game folder opened".to_string())
         }
         "open-url" => {
-            use tauri_plugin_opener::OpenerExt;
-            app.opener()
-                .open_url(arg, None::<&str>)
-                .map_err(|e| e.to_string())?;
+            crate::open_path_or_url(&app, &arg, true)?;
             Ok("URL opened in browser".to_string())
         }
         _ => Err(format!("Unknown crash action: {}", kind)),

@@ -4,7 +4,6 @@ use tauri::State;
 #[tauri::command]
 pub fn open_version_folder(version_id: String, app: tauri::AppHandle) -> Result<(), String> {
     validate_safe_id(&version_id)?;
-    use tauri_plugin_opener::OpenerExt;
 
     let mut mc_dir = crate::minecraft::versions::get_minecraft_dir();
 
@@ -12,12 +11,10 @@ pub fn open_version_folder(version_id: String, app: tauri::AppHandle) -> Result<
     mc_dir.push(&version_id);
 
     if !mc_dir.exists() {
-        let _ = std::fs::create_dir_all(&mc_dir);
+        std::fs::create_dir_all(&mc_dir).map_err(|e| e.to_string())?;
     }
 
-    app.opener()
-        .open_path(mc_dir.to_string_lossy().to_string(), None::<&str>)
-        .map_err(|e| e.to_string())?;
+    crate::open_path_or_url(&app, &mc_dir.to_string_lossy(), false)?;
 
     Ok(())
 }
