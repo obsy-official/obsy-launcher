@@ -7,7 +7,8 @@
     "updater": {
       "downloading": "Загрузка обновления {{version}}...",
       "downloadingProgress": "Загрузка обновления {{version}}: {{progress}}%",
-      "downloaded": "Обновление загружено! Перезапуск..."
+      "downloaded": "Обновление загружено! Перезапуск...",
+      "restarting": "Обновление установлено! Перезапуск..."
     },
     "console": {
       "title": "Логи консоли",
@@ -89,6 +90,10 @@
       "aikarHint": "Флаги Aikar's Flags оптимизируют сборщик мусора и устраняют микрофризы.",
       "javaPath": "Путь к Java",
       "closeAfterLaunch": "Закрывать лаунчер после запуска",
+      "launchBehavior": "После запуска игры",
+      "launchBehaviorKeep": "Оставлять открытым",
+      "launchBehaviorHide": "Сворачивать в фон (учёт времени)",
+      "launchBehaviorExit": "Полностью закрывать",
       "width": "Ширина",
       "height": "Высота",
       "fullscreen": "Полноэкранный режим",

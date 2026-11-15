@@ -45,9 +45,12 @@ export async function fetchRemoteCatalog(
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 8000);
 
-    const res = await fetch(registryUrl, {
+    const separator = registryUrl.includes("?") ? "&" : "?";
+    const fetchUrl = `${registryUrl}${separator}t=${Date.now()}`;
+
+    const res = await fetch(fetchUrl, {
       signal: controller.signal,
-      cache: "no-cache",
+      cache: "no-store",
     });
     clearTimeout(timeoutId);
 

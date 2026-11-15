@@ -64,6 +64,19 @@ export const AddonsModalDialogContent: React.FC = () => {
     }
   };
 
+  const handleUpdate = async (id: string) => {
+    setInstallingId(id);
+    setUploadError(null);
+    try {
+      await updateAddon(id);
+    } catch (e: any) {
+      console.error("Update addon failed:", e);
+      setUploadError(e?.message || String(e));
+    } finally {
+      setInstallingId(null);
+    }
+  };
+
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -204,7 +217,7 @@ export const AddonsModalDialogContent: React.FC = () => {
           installingId={installingId}
           isLoading={isLoading}
           onInstall={handleInstall}
-          onUpdate={updateAddon}
+          onUpdate={handleUpdate}
           onSettings={setActiveSettingsManifest}
           onUninstall={uninstallAddon}
           onToggle={toggleAddon}
@@ -215,7 +228,7 @@ export const AddonsModalDialogContent: React.FC = () => {
         <InstalledTabContent
           installedList={installedList}
           catalog={catalog}
-          onUpdate={updateAddon}
+          onUpdate={handleUpdate}
           onSettings={setActiveSettingsManifest}
           onInstall={handleInstall}
           onUninstall={uninstallAddon}

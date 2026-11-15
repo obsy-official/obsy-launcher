@@ -2,7 +2,7 @@
   {
     "id": "skin-3d-viewer",
     "name": "3D Skin Doll & Capes Wardrobe",
-    "version": "2.0.0",
+    "version": "2.4.2",
     "description": "Интерактивная 3D-модель персонажа с анимацией, гардеробом скинов и установкой плащей.",
     "author": "Obsy Team",
     "category": "customization",
@@ -33,21 +33,21 @@
         "default": 160
       }
     },
-    "sizeBytes": 135381,
-    "checksum": "e4f1408686b8091e0cfab6f3f6ea937dd820a709898133a64a5eaa03348cfe3c",
+    "sizeBytes": 135574,
+    "checksum": "d23bfa0ca66a179f5feb62779ea475ac1a1ad1bd34fe37a4bd38a6e5d35c7c9d",
     "downloadUrl": "https://raw.githubusercontent.com/obsy-official/obsy-launcher/main/addons/dist/skin-3d-viewer.zip"
   },
   {
     "id": "modrinth-browser",
     "name": "Modrinth Explorer",
-    "version": "2.8.1",
+    "version": "2.8.3",
     "description": "Каталог модов, ресурспаков и шейдеров от Modrinth с быстрой установкой в один клик.",
     "author": "Obsy Team",
     "category": "utility",
     "permissions": ["fs:instances", "ui:slots", "network:fetch"],
     "tags": ["mods", "modrinth", "shaders", "resourcepacks"],
-    "sizeBytes": 7546,
-    "checksum": "071fb6ec9334fba3e4d5e660e25b1f5bc44de121ef30db8ce3cb23c1d2dd2313",
+    "sizeBytes": 7791,
+    "checksum": "162975efb0e20e13d2126058af2fa36fc7f7b42f15c37d001d326bac175f205a",
     "downloadUrl": "https://raw.githubusercontent.com/obsy-official/obsy-launcher/main/addons/dist/modrinth-browser.zip"
   },
   {

@@ -383,14 +383,23 @@ async fn launch_game_inner(
     );
 
     let app_clone_wait = app.clone();
-    let close_after_launch = launcher_state.close_after_launch;
+    let launch_behavior = launcher_state.effective_launch_behavior().to_string();
 
     std::thread::spawn(move || {
-        if close_after_launch {
-            std::thread::sleep(std::time::Duration::from_millis(4000));
-            if let Some(window) = app_clone_wait.get_webview_window("main") {
-                let _ = window.hide();
+        match launch_behavior.as_str() {
+            "exit" => {
+                std::thread::sleep(std::time::Duration::from_millis(1000));
+                app_clone_wait.exit(0);
+                return;
             }
+            "hide" => {
+                std::thread::sleep(std::time::Duration::from_millis(4000));
+                let _ = app_clone_wait.emit("launcher-visibility", false);
+                if let Some(window) = app_clone_wait.get_webview_window("main") {
+                    let _ = window.hide();
+                }
+            }
+            _ => {}
         }
 
         let exit_status = child.wait().ok();
@@ -422,6 +431,7 @@ async fn launch_game_inner(
             let _ = window.unminimize();
             let _ = window.set_focus();
         }
+        let _ = app_clone_wait.emit("launcher-visibility", true);
 
         if let Some(app_state) = app_clone_wait.try_state::<AppState>() {
             app_state

@@ -7,7 +7,8 @@
     "updater": {
       "downloading": "Downloading update {{version}}...",
       "downloadingProgress": "Downloading update {{version}}: {{progress}}%",
-      "downloaded": "Update downloaded! Restarting..."
+      "downloaded": "Update downloaded! Restarting...",
+      "restarting": "Update installed! Restarting..."
     },
     "console": {
       "title": "Console Logs",
@@ -89,6 +90,10 @@
       "aikarHint": "Aikar's Flags optimize garbage collection and eliminate lag spikes.",
       "javaPath": "Java Path",
       "closeAfterLaunch": "Close launcher after start",
+      "launchBehavior": "After game launch",
+      "launchBehaviorKeep": "Keep open",
+      "launchBehaviorHide": "Hide to background (track playtime)",
+      "launchBehaviorExit": "Exit completely",
       "width": "Width",
       "height": "Height",
       "fullscreen": "Fullscreen mode",

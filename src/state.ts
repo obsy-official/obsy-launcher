@@ -16,6 +16,7 @@ export interface LauncherState {
   jvmArguments: string;
   javaPath: string | null;
   closeAfterLaunch: boolean;
+  launchBehavior?: "keep" | "hide" | "exit";
   releaseFilter: boolean;
   moddedFilter: boolean;
   snapshotFilter: boolean;

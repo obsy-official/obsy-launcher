@@ -44,6 +44,8 @@ pub struct LauncherState {
     pub jvm_arguments: String,
     pub java_path: Option<String>,
     pub close_after_launch: bool,
+    #[serde(default)]
+    pub launch_behavior: Option<String>,
 
     pub release_filter: bool,
     pub modded_filter: bool,
@@ -68,6 +70,7 @@ impl Default for LauncherState {
             jvm_arguments: String::new(),
             java_path: None,
             close_after_launch: false,
+            launch_behavior: None,
             release_filter: true,
             modded_filter: true,
             snapshot_filter: false,
@@ -79,6 +82,21 @@ impl Default for LauncherState {
 }
 
 impl LauncherState {
+    pub fn effective_launch_behavior(&self) -> &str {
+        match self.launch_behavior.as_deref() {
+            Some("exit") => "exit",
+            Some("hide") => "hide",
+            Some("keep") => "keep",
+            _ => {
+                if self.close_after_launch {
+                    "hide"
+                } else {
+                    "keep"
+                }
+            }
+        }
+    }
+
     pub fn normalize(&mut self) {
         self.scale = self.scale.max(1);
         self.memory_amount = self.memory_amount.clamp(512, 65536);

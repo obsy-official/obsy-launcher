@@ -2,33 +2,23 @@ use keyring::Entry;
 use magic_crypt::{new_magic_crypt, MagicCryptTrait};
 use serde::{Deserialize, Serialize};
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use uuid::Uuid;
 
-fn get_encryption_key(store_path: &PathBuf) -> String {
-    // Prefer OS-native keychain (Keychain Access on macOS, Credential Manager on Windows)
-    // to prevent local malware from easily extracting Microsoft session tokens.
-    if let Ok(entry) = Entry::new("obsy-launcher", "profile-encryption-key") {
-        if let Ok(password) = entry.get_password() {
-            return password;
-        }
-        let key = Uuid::new_v4().to_string() + &Uuid::new_v4().to_string();
-        if entry.set_password(&key).is_ok() {
-            return key;
-        }
-    }
-
-    // OS Keyring might be unavailable in unsigned dev builds (macOS errSecAuthFailed) or headless setups.
-    // Fall back to a local key file to ensure the launcher still boots without panicking.
+fn read_file_key(store_path: &Path) -> Option<String> {
     let key_path = store_path.with_file_name("profiles.key");
     if key_path.exists() {
-        if let Ok(key) = fs::read_to_string(&key_path) {
-            return key;
-        }
+        return fs::read_to_string(&key_path).ok().filter(|k| !k.is_empty());
     }
+    None
+}
 
-    let key = Uuid::new_v4().to_string() + &Uuid::new_v4().to_string();
-    let _ = fs::write(&key_path, &key);
+fn write_file_key(store_path: &Path, key: &str) {
+    let key_path = store_path.with_file_name("profiles.key");
+    if let Some(parent) = key_path.parent() {
+        let _ = fs::create_dir_all(parent);
+    }
+    let _ = fs::write(&key_path, key);
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
@@ -38,7 +28,38 @@ fn get_encryption_key(store_path: &PathBuf) -> String {
             let _ = fs::set_permissions(&key_path, perms);
         }
     }
+}
+
+fn get_encryption_key(store_path: &Path) -> String {
+    let file_key = read_file_key(store_path);
+
+    if let Ok(entry) = Entry::new("obsy-launcher", "profile-encryption-key") {
+        if let Ok(password) = entry.get_password() {
+            return password;
+        }
+        if let Some(existing) = file_key {
+            let _ = entry.set_password(&existing);
+            return existing;
+        }
+        let key = Uuid::new_v4().to_string() + &Uuid::new_v4().to_string();
+        if entry.set_password(&key).is_ok() {
+            return key;
+        }
+    }
+
+    if let Some(existing) = file_key {
+        return existing;
+    }
+
+    let key = Uuid::new_v4().to_string() + &Uuid::new_v4().to_string();
+    write_file_key(store_path, &key);
     key
+}
+
+fn try_decrypt_profiles(contents: &str, key: &str) -> Option<Vec<Profile>> {
+    let mc = new_magic_crypt!(key, 256);
+    let decrypted = mc.decrypt_base64_to_string(contents).ok()?;
+    serde_json::from_str(&decrypted).ok()
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -99,12 +120,21 @@ impl ProfileStore {
     pub fn load(&self) -> Vec<Profile> {
         if self.path.exists() {
             if let Ok(contents) = fs::read_to_string(&self.path) {
-                let key = get_encryption_key(&self.path);
-                let mc = new_magic_crypt!(key, 256);
-
-                if let Ok(decrypted) = mc.decrypt_base64_to_string(&contents) {
-                    if let Ok(profiles) = serde_json::from_str(&decrypted) {
-                        return profiles;
+                let primary_key = get_encryption_key(&self.path);
+                if let Some(profiles) = try_decrypt_profiles(&contents, &primary_key) {
+                    return profiles;
+                }
+                if let Some(file_key) = read_file_key(&self.path) {
+                    if file_key != primary_key {
+                        if let Some(profiles) = try_decrypt_profiles(&contents, &file_key) {
+                            return profiles;
+                        }
+                    }
+                }
+                if !contents.trim().is_empty() {
+                    let backup_path = self.path.with_file_name("profiles.json.bak");
+                    if !backup_path.exists() {
+                        let _ = fs::copy(&self.path, &backup_path);
                     }
                 }
             }

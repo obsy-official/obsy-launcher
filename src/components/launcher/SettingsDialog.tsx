@@ -9,6 +9,13 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -152,20 +159,40 @@ export const SettingsDialog = () => {
               />
             </div>
 
-            <div className="flex items-center justify-between">
-              <Label
-                htmlFor="close-after-launch"
-                className="flex flex-col items-start gap-1"
-              >
-                <span>{t("settings.closeAfterLaunch")}</span>
+            <div className="flex items-center justify-between gap-4">
+              <Label htmlFor="launch-behavior" className="shrink-0">
+                <span>{t("settings.launchBehavior")}</span>
               </Label>
-              <Switch
-                id="close-after-launch"
-                checked={state.closeAfterLaunch}
-                onCheckedChange={(checked) =>
-                  updateState({ ...state, closeAfterLaunch: checked })
+              <Select
+                value={
+                  state.launchBehavior ??
+                  (state.closeAfterLaunch ? "hide" : "keep")
                 }
-              />
+                onValueChange={(val) => {
+                  if (!val) return;
+                  const behavior = val as "keep" | "hide" | "exit";
+                  updateState({
+                    ...state,
+                    launchBehavior: behavior,
+                    closeAfterLaunch: behavior !== "keep",
+                  });
+                }}
+              >
+                <SelectTrigger id="launch-behavior" className="w-[240px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="keep">
+                    {t("settings.launchBehaviorKeep")}
+                  </SelectItem>
+                  <SelectItem value="hide">
+                    {t("settings.launchBehaviorHide")}
+                  </SelectItem>
+                  <SelectItem value="exit">
+                    {t("settings.launchBehaviorExit")}
+                  </SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </TabsContent>
 

@@ -323,14 +323,18 @@ export const useAddonStore = create<AddonStateStore>((set, get) => ({
     try {
       if (manifest.downloadUrl) {
         let bytes: number[] | null = null;
+        const cacheTag = manifest.checksum || manifest.version;
+        const downloadUrl = cacheTag
+          ? `${manifest.downloadUrl}${manifest.downloadUrl.includes("?") ? "&" : "?"}v=${encodeURIComponent(cacheTag)}`
+          : manifest.downloadUrl;
 
         // Try Tauri native downloader
         try {
           bytes = await invoke<number[]>("download_addon_archive_bytes", {
-            downloadUrl: manifest.downloadUrl,
+            downloadUrl,
           });
         } catch {
-          const res = await fetch(manifest.downloadUrl);
+          const res = await fetch(downloadUrl, { cache: "no-cache" });
           if (!res.ok) {
             throw new Error(`Failed to download addon: HTTP ${res.status}`);
           }

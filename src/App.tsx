@@ -1,6 +1,6 @@
 import { relaunch } from "@tauri-apps/plugin-process";
 import { check } from "@tauri-apps/plugin-updater";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { listen } from "@tauri-apps/api/event";
 import { Header } from "./components/launcher/Header";
@@ -37,6 +37,7 @@ const App = () => {
   const [showOnboarding, setShowOnboarding] = useState(() => {
     return localStorage.getItem("hasCompletedOnboarding") !== "true";
   });
+  const isHiddenRef = useRef(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -79,6 +80,9 @@ const App = () => {
         }
       } catch (error) {
         console.error("Failed to check for updates", error);
+        if (isMounted) {
+          setUpdateStatus(null);
+        }
       }
     };
 
@@ -96,7 +100,9 @@ const App = () => {
     fetchVersions();
 
     const memInterval = setInterval(() => {
-      fetchAppMemory();
+      if (!isHiddenRef.current && !document.hidden) {
+        fetchAppMemory();
+      }
     }, 5000);
 
     return () => {
@@ -125,6 +131,38 @@ const App = () => {
       unlistenErr.then((f) => f());
     };
   }, []);
+
+  useEffect(() => {
+    const applyHiddenState = (hidden: boolean) => {
+      isHiddenRef.current = hidden;
+      document.documentElement.classList.toggle("obsy-paused", hidden);
+      (window as unknown as { __obsyHidden?: boolean }).__obsyHidden = hidden;
+      window.dispatchEvent(
+        new CustomEvent("obsy:visibility", { detail: { hidden } }),
+      );
+      if (!hidden) {
+        fetchAppMemory();
+      }
+    };
+
+    const handleVisibilityChange = () => {
+      applyHiddenState(document.hidden);
+    };
+
+    const unlistenVisibility = listen<boolean>(
+      "launcher-visibility",
+      (event) => {
+        applyHiddenState(!event.payload);
+      },
+    );
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      unlistenVisibility.then((f) => f());
+      applyHiddenState(false);
+    };
+  }, [fetchAppMemory]);
 
   useEffect(() => {
     if (state?.language) {
