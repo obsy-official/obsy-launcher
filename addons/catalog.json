@@ -33,8 +33,8 @@
         "default": 160
       }
     },
-    "sizeBytes": 136481,
-    "checksum": "d6163491483e8c22c6c12a757116f77249fe0aa33948033e4cb776a09500d82f",
+    "sizeBytes": 135381,
+    "checksum": "45ee26e15a602bb6a42b8187265b98644b9a409f02e6d60851164777de7782b1",
     "downloadUrl": "https://raw.githubusercontent.com/obsy-official/obsy-launcher/main/addons/dist/skin-3d-viewer.zip"
   },
   {
@@ -46,8 +46,8 @@
     "category": "utility",
     "permissions": ["fs:instances", "ui:slots", "network:fetch"],
     "tags": ["mods", "modrinth", "shaders", "resourcepacks"],
-    "sizeBytes": 7145,
-    "checksum": "bbf4e6ac1d2d1c16b422ebb1acc354d947c02870dece8d6a63709a3ea48e5727",
+    "sizeBytes": 7546,
+    "checksum": "e2411e8c9fd21bdb47ba60f0d89e32e301308c172487b76d7e3c2ffa23102466",
     "downloadUrl": "https://raw.githubusercontent.com/obsy-official/obsy-launcher/main/addons/dist/modrinth-browser.zip"
   },
   {
@@ -85,7 +85,7 @@
       }
     },
     "sizeBytes": 3578,
-    "checksum": "a99b373513d061dc9db9cc1e5c4e83b9c19b9cd04d572f9ed9a80fb5ddefeecb",
+    "checksum": "c16863671c071ba442655c522ab2cff57fa27f5af31cc3ed197f58de252a29d5",
     "downloadUrl": "https://raw.githubusercontent.com/obsy-official/obsy-launcher/main/addons/dist/discord-rpc.zip"
   }
 ]
