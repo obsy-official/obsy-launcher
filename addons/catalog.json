@@ -34,20 +34,20 @@
       }
     },
     "sizeBytes": 135381,
-    "checksum": "45ee26e15a602bb6a42b8187265b98644b9a409f02e6d60851164777de7782b1",
+    "checksum": "e4f1408686b8091e0cfab6f3f6ea937dd820a709898133a64a5eaa03348cfe3c",
     "downloadUrl": "https://raw.githubusercontent.com/obsy-official/obsy-launcher/main/addons/dist/skin-3d-viewer.zip"
   },
   {
     "id": "modrinth-browser",
     "name": "Modrinth Explorer",
-    "version": "2.8.0",
+    "version": "2.8.1",
     "description": "Каталог модов, ресурспаков и шейдеров от Modrinth с быстрой установкой в один клик.",
     "author": "Obsy Team",
     "category": "utility",
     "permissions": ["fs:instances", "ui:slots", "network:fetch"],
     "tags": ["mods", "modrinth", "shaders", "resourcepacks"],
     "sizeBytes": 7546,
-    "checksum": "e2411e8c9fd21bdb47ba60f0d89e32e301308c172487b76d7e3c2ffa23102466",
+    "checksum": "071fb6ec9334fba3e4d5e660e25b1f5bc44de121ef30db8ce3cb23c1d2dd2313",
     "downloadUrl": "https://raw.githubusercontent.com/obsy-official/obsy-launcher/main/addons/dist/modrinth-browser.zip"
   },
   {
