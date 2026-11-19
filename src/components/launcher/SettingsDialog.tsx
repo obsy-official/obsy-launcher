@@ -179,7 +179,19 @@ export const SettingsDialog = () => {
                 }}
               >
                 <SelectTrigger id="launch-behavior" className="w-[240px]">
-                  <SelectValue />
+                  <SelectValue>
+                    {(val: string | null) => {
+                      const labels: Record<string, string> = {
+                        keep: t("settings.launchBehaviorKeep"),
+                        hide: t("settings.launchBehaviorHide"),
+                        exit: t("settings.launchBehaviorExit"),
+                      };
+                      return (
+                        labels[val ?? "keep"] ??
+                        t("settings.launchBehaviorKeep")
+                      );
+                    }}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="keep">
